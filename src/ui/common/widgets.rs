@@ -37,9 +37,9 @@ pub fn switch(ui: &mut egui::Ui, value: &mut bool, label: &str) -> egui::Respons
         egui::vec2(32.0, 18.0),
     );
     let fill = if *value {
-        theme::ACCENT
+        theme::CHAMPAGNE
     } else {
-        Color32::from_rgb(67, 78, 81)
+        Color32::from_rgb(60, 75, 89)
     };
     ui.painter().rect_filled(
         track,
@@ -76,70 +76,6 @@ pub fn switch(ui: &mut egui::Ui, value: &mut bool, label: &str) -> egui::Respons
     response
 }
 
-pub fn choice(ui: &mut egui::Ui, icon: Icon, label: &str, selected: bool) -> egui::Response {
-    let (rect, _) =
-        ui.allocate_exact_size(egui::vec2(ui.available_width(), 38.0), egui::Sense::hover());
-    let response = ui.interact(rect, ui.id().with(("choice", label)), egui::Sense::click());
-    response.widget_info(|| {
-        egui::WidgetInfo::selected(
-            egui::WidgetType::SelectableLabel,
-            ui.is_enabled(),
-            selected,
-            label,
-        )
-    });
-    ui.painter().rect_filled(
-        rect,
-        7,
-        if selected {
-            Color32::from_rgb(32, 59, 50)
-        } else {
-            theme::BACKGROUND
-        },
-    );
-    if response.hovered() || response.has_focus() {
-        ui.painter().rect_stroke(
-            rect,
-            7,
-            egui::Stroke::new(1.0_f32, theme::ACCENT),
-            egui::StrokeKind::Inside,
-        );
-    }
-    let color = if selected {
-        theme::ACCENT
-    } else {
-        theme::MUTED
-    };
-    icons::draw(
-        ui.painter(),
-        egui::Rect::from_center_size(
-            rect.left_center() + egui::vec2(20.0, 0.0),
-            egui::vec2(16.0, 16.0),
-        ),
-        icon,
-        color,
-    );
-    ui.painter().text(
-        rect.left_center() + egui::vec2(40.0, 0.0),
-        egui::Align2::LEFT_CENTER,
-        label,
-        egui::FontId::proportional(13.0),
-        theme::TEXT,
-    );
-    if selected {
-        icons::draw(
-            ui.painter(),
-            egui::Rect::from_center_size(
-                rect.right_center() - egui::vec2(20.0, 0.0),
-                egui::vec2(14.0, 14.0),
-            ),
-            Icon::Check,
-            color,
-        );
-    }
-    response
-}
-
 pub fn number(
     ui: &mut egui::Ui,
     label: &str,
@@ -153,12 +89,10 @@ pub fn number(
             ui.label(RichText::new(label).size(13.0));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let plus = ui
-                    .add_enabled(
-                        *value < *range.end(),
-                        egui::Button::new("+")
-                            .corner_radius(6)
-                            .min_size(egui::vec2(30.0, 30.0)),
-                    )
+                    .add_enabled_ui(*value < *range.end(), |ui| {
+                        icons::sized_button(ui, Icon::Plus, "增加 1", 30.0)
+                    })
+                    .inner
                     .on_hover_text("增加 1");
                 if plus.clicked() {
                     *value = (*value + 1.0).min(*range.end());
@@ -174,12 +108,10 @@ pub fn number(
                     )
                     .changed();
                 let minus = ui
-                    .add_enabled(
-                        *value > *range.start(),
-                        egui::Button::new("−")
-                            .corner_radius(6)
-                            .min_size(egui::vec2(30.0, 30.0)),
-                    )
+                    .add_enabled_ui(*value > *range.start(), |ui| {
+                        icons::sized_button(ui, Icon::Minus, "减少 1", 30.0)
+                    })
+                    .inner
                     .on_hover_text("减少 1");
                 if minus.clicked() {
                     *value = (*value - 1.0).max(*range.start());
@@ -231,16 +163,16 @@ pub fn tab(ui: &mut egui::Ui, label: &str, selected: bool, width: f32) -> egui::
             theme::MUTED
         }))
         .fill(if selected {
-            Color32::from_rgb(30, 53, 46)
+            Color32::from_rgba_unmultiplied(156, 168, 172, 35)
         } else {
-            theme::BACKGROUND
+            Color32::TRANSPARENT
         })
         .stroke(egui::Stroke::new(
             1.0_f32,
             if selected {
-                theme::ACCENT.gamma_multiply(0.6)
+                theme::CHAMPAGNE.gamma_multiply(0.65)
             } else {
-                theme::LINE
+                Color32::TRANSPARENT
             },
         ))
         .corner_radius(7),
@@ -269,14 +201,17 @@ mod tests {
         )
     }
 
-    fn click_number(ctx: &egui::Context, value: &mut f64, symbol: &str) {
+    fn click_number(ctx: &egui::Context, value: &mut f64, icon: Icon) {
         let output = number_frame(ctx, value, Vec::new());
         let point = output
             .shapes
             .iter()
             .find_map(|shape| match &shape.shape {
-                egui::Shape::Text(text) if text.galley.text() == symbol => {
-                    Some(text.pos + text.galley.size() * 0.5)
+                egui::Shape::Mesh(mesh)
+                    if mesh.texture_id
+                        == super::super::artwork::texture(ctx, icon.asset()).id() =>
+                {
+                    Some(mesh.calc_bounds().center())
                 }
                 _ => None,
             })
@@ -302,14 +237,14 @@ mod tests {
     fn numeric_buttons_follow_bounds_and_do_not_wrap() {
         let ctx = egui::Context::default();
         let mut value = 5.0;
-        click_number(&ctx, &mut value, "+");
+        click_number(&ctx, &mut value, Icon::Plus);
         assert_eq!(value, 6.0);
-        click_number(&ctx, &mut value, "+");
+        click_number(&ctx, &mut value, Icon::Plus);
         assert_eq!(value, 6.0);
-        click_number(&ctx, &mut value, "−");
+        click_number(&ctx, &mut value, Icon::Minus);
         assert_eq!(value, 5.0);
         value = 0.0;
-        click_number(&ctx, &mut value, "−");
+        click_number(&ctx, &mut value, Icon::Minus);
         assert_eq!(value, 0.0);
     }
 

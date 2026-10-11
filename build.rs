@@ -1,14 +1,10 @@
+#[path = "scripts/visual_assets.rs"]
+mod visual_assets;
+
 fn main() {
-    println!("cargo:rerun-if-changed=assets/branding/logo.png");
-    let source = image::open("assets/branding/logo.png").expect("应用 logo 必须存在");
+    println!("cargo:rerun-if-changed=scripts/visual_assets.rs");
     let folder = std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
-    for size in [32, 64] {
-        let icon = source
-            .resize_exact(size, size, image::imageops::FilterType::Lanczos3)
-            .to_rgba8();
-        icon.save(folder.join(format!("icon-{size}.png"))).unwrap();
-        std::fs::write(folder.join(format!("icon-{size}.rgba")), icon.as_raw()).unwrap();
-    }
+    visual_assets::build(&folder);
     println!("cargo:rerun-if-changed=assets/pets/atlas.png");
     let atlas = image::open("assets/pets/atlas.png")
         .expect("宠物图集必须存在")

@@ -165,12 +165,8 @@ impl Sprites {
                 ui.add_space(12.0);
             }
         });
-        widgets::switch(
-            ui,
-            &mut config.pet_animation,
-            "鼠标跟随、眨眼、悬停抬头、点击回应及拖放摇摆",
-        );
-        ui.weak("头和眼睛跟随全屏鼠标；悬停显示快捷操作，双击或托盘恢复完整卡片。移动动画最多 15 帧/秒；关闭动画后停止鼠标轮询。");
+        widgets::switch(ui, &mut config.pet_animation, "互动动画");
+        ui.weak("眼神跟随、眨眼与拖放回弹。悬停打开快捷操作，双击还原卡片。");
     }
 }
 pub fn badge(config: &Config, snapshot: &Snapshot) -> (String, Color32) {

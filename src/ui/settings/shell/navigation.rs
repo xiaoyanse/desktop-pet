@@ -8,17 +8,42 @@ use eframe::egui::{self, Color32, RichText};
 pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<usize> {
     let mut next = None;
     egui::SidePanel::left("settings-navigation")
-        .exact_width(160.0)
+        .show_separator_line(false)
+        .exact_width(212.0)
         .resizable(false)
         .frame(
             egui::Frame::new()
-                .fill(Color32::from_rgb(16, 20, 23))
-                .inner_margin(16),
+                .stroke(egui::Stroke::NONE)
+                .inner_margin(18),
         )
         .show(ctx, |ui| {
-            ui.add_space(16.0);
-            ui.label(RichText::new("工作台").size(11.0).color(theme::MUTED));
-            ui.add_space(10.0);
+            let (brand, _) = ui
+                .allocate_exact_size(egui::vec2(ui.available_width(), 72.0), egui::Sense::hover());
+            icons::draw(
+                ui.painter(),
+                egui::Rect::from_center_size(
+                    brand.min + egui::vec2(24.0, 28.0),
+                    egui::vec2(46.0, 46.0),
+                ),
+                Icon::Monitor,
+                Color32::WHITE,
+            );
+            ui.painter().text(
+                brand.min + egui::vec2(56.0, 13.0),
+                egui::Align2::LEFT_TOP,
+                "桌面仪表",
+                egui::FontId::proportional(21.0),
+                theme::TEXT,
+            );
+            ui.painter().text(
+                brand.min + egui::vec2(56.0, 43.0),
+                egui::Align2::LEFT_TOP,
+                "陪伴高效的每一天",
+                egui::FontId::proportional(11.0),
+                theme::MUTED,
+            );
+            ui.add_space(20.0);
+            let row_height = ((ui.available_height() - 44.0 - 6.0 * 15.0) / 6.0).clamp(40.0, 60.0);
             for (index, icon, name) in [
                 (0, Icon::Monitor, "监测项目"),
                 (1, Icon::Palette, "外观与宠物"),
@@ -28,7 +53,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 (5, Icon::History, "清理记录"),
             ] {
                 let (rect, _) = ui.allocate_exact_size(
-                    egui::vec2(ui.available_width(), 44.0),
+                    egui::vec2(ui.available_width(), row_height),
                     egui::Sense::hover(),
                 );
                 let response = ui.interact(
@@ -43,49 +68,47 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 if selected || response.hovered() || response.has_focus() {
                     ui.painter().rect_filled(
                         rect,
-                        8,
+                        12,
                         if selected {
-                            Color32::from_rgb(30, 53, 46)
+                            Color32::from_rgba_unmultiplied(113, 132, 145, 50)
                         } else {
-                            theme::SURFACE
+                            theme::HOVER
                         },
                     );
                 }
                 if selected {
-                    ui.painter().rect_filled(
-                        egui::Rect::from_min_size(
-                            rect.min + egui::vec2(0.0, 13.0),
-                            egui::vec2(3.0, 18.0),
-                        ),
-                        2,
-                        theme::ACCENT,
+                    ui.painter().rect_stroke(
+                        rect,
+                        12,
+                        egui::Stroke::new(1.0_f32, theme::CHAMPAGNE.gamma_multiply(0.6)),
+                        egui::StrokeKind::Inside,
                     );
                 }
                 let color = if selected {
-                    theme::ACCENT
+                    Color32::WHITE
                 } else {
-                    theme::MUTED
+                    Color32::from_white_alpha(190)
                 };
                 icons::draw(
                     ui.painter(),
                     egui::Rect::from_center_size(
-                        rect.min + egui::vec2(22.0, 22.0),
-                        egui::vec2(18.0, 18.0),
+                        rect.min + egui::vec2(26.0, row_height * 0.5),
+                        egui::Vec2::splat((row_height - 8.0).min(40.0)),
                     ),
                     icon,
                     color,
                 );
                 ui.painter().text(
-                    rect.min + egui::vec2(40.0, 22.0),
+                    rect.min + egui::vec2(54.0, row_height * 0.5),
                     egui::Align2::LEFT_CENTER,
                     name,
-                    egui::FontId::proportional(13.0),
+                    egui::FontId::proportional(14.0),
                     if selected { theme::TEXT } else { theme::MUTED },
                 );
                 if response.clicked() {
                     next = Some(index);
                 }
-                ui.add_space(6.0);
+                ui.add_space(8.0);
             }
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
                 ui.weak(format!("每 {} 秒更新", config.seconds));
@@ -108,9 +131,9 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
         4 => ("内存清理", "按工作状态选择档位，每次操作都明确可查。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
-    ui.label(RichText::new(title).size(26.0).strong());
-    ui.label(RichText::new(description).size(13.0).color(theme::MUTED));
-    ui.add_space(16.0);
+    ui.label(RichText::new(title).size(32.0).strong());
+    ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
+    ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
         ui.label(
             RichText::new(format!(
@@ -131,7 +154,44 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
             .color(theme::MUTED),
         );
     });
-    ui.add_space(12.0);
-    ui.separator();
-    ui.add_space(18.0);
+    ui.add_space(24.0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn minimum_window_keeps_last_navigation_item_above_footer() {
+        let ctx = egui::Context::default();
+        theme::setup(&ctx);
+        let out = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(840.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                super::super::window_chrome::show(ctx);
+                navigation(ctx, 5, &Config::default());
+            },
+        );
+        let bounds = |text: &str| {
+            out.shapes
+                .iter()
+                .find_map(|s| match &s.shape {
+                    egui::Shape::Text(t) if t.galley.text() == text => {
+                        Some(egui::Rect::from_min_size(t.pos, t.galley.size()))
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let last = bounds("清理记录");
+        let footer = bounds("本机监测");
+        assert!(last.bottom() + 12.0 < footer.top());
+        assert!(footer.bottom() < 600.0);
+    }
 }

@@ -9,7 +9,7 @@ pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egu
         enabled,
         egui::Button::new("")
             .fill(if enabled {
-                theme::ACCENT
+                Color32::from_rgb(54, 84, 86)
             } else {
                 Color32::from_rgb(43, 58, 70)
             })
@@ -18,7 +18,7 @@ pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egu
     );
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
     let foreground = if enabled {
-        Color32::from_rgb(11, 37, 42)
+        theme::TEXT
     } else {
         Color32::from_rgb(137, 154, 169)
     };
@@ -26,10 +26,14 @@ pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egu
         ui.painter(),
         egui::Rect::from_center_size(
             egui::pos2(response.rect.left() + 25.0, response.rect.center().y),
-            egui::vec2(20.0, 20.0),
+            egui::vec2(28.0, 28.0),
         ),
         icon,
-        foreground,
+        if enabled {
+            Color32::WHITE
+        } else {
+            Color32::from_white_alpha(75)
+        },
     );
     ui.painter().text(
         egui::pos2(response.rect.left() + 50.0, response.rect.center().y),

@@ -4,11 +4,11 @@
 
 | 层 | 职责 | 允许的项目依赖 |
 | --- | --- | --- |
-| ui | 设置页、悬浮卡片、用户输入、绘制 | application、domain、interfaces |
+| ui | 设置页、悬浮卡片、用户输入、绘制 | application、domain、interfaces、assets |
 | application | 监测任务生命周期、执行用例、协调服务 | domain、interfaces |
 | domain | 资源模型、设置校验、阈值和清理策略 | 本层 |
 | interfaces | 采样、存储、桌面集成、清理等能力契约 | domain |
-| infrastructure | Windows API 与文件存储的实际实现 | domain、interfaces、本层 |
+| infrastructure | Windows API 与文件存储的实际实现 | domain、interfaces、assets、本层 |
 | main.rs | 解析入口参数、选择并装配实现、启动 UI | 所有层 |
 
 这里的接口层是内部能力契约，当前没有 HTTP 服务。`ResourceSampler`、`SettingsStore`、`DesktopSession`、`MemoryCleaner` 是实际使用的接口，不为空目录或占位模块。
@@ -20,6 +20,8 @@ UI 不导入 infrastructure，不直接读取设置文件或调用 Win32。后�
 宠物绘制、局部头部/眼睛网格动画与快捷面板属于 UI；`DesktopGeometry`、宠物选项和面板边界计算属于领域层。全屏鼠标位置、原生拖放通知和工具窗口样式通过 `DesktopSession` 提供。普通悬浮窗与快捷面板同时设置框架的任务栏选项和 Win32 工具窗口样式，设置窗口保留普通应用样式。Windows 样式变化拦截保持任务栏策略，不改变置顶或鼠标穿透设置。
 
 ## 层内按职责组织
+
+`assets.rs` 是框架中立的静态 RGBA 目录，由 Rust 构建生成，不依赖 UI、Windows 或文件存储。UI 使用 egui 按需缓存；原生菜单使用 GDI 位图，同享像素而不跨层调用。`scripts/visual_assets.rs` 在构建期读取原图与切图清单，生成尺寸、质量、预算及切片，运行时不做图像解码；开发测试直接覆盖同一切图逻辑。未实现功能的素材不链接进应用。
 
 - `ui/monitor.rs` 保留主界面入口与生命周期协调；主入口使用方式保持兼容。
 - `ui/common/` 放各窗口复用的主题、图标、控件及清理档位/确认组件，不依赖具体设置页。宠物快捷面板与清理页复用同一确认逻辑。
@@ -33,7 +35,7 @@ UI 不导入 infrastructure，不直接读取设置文件或调用 Win32。后�
 
 ## 新功能如何加入
 
-自绘设置窗、开关、数值编辑和分类页签属于 UI；窗口动作通过 egui 视口命令交给宿主执行，不在 UI 调 Win32。`surface` 共享卡片与预览的尺寸/表面规则，预览消费已有采样，不启动独立采样服务。只读诊断分别暴露原始样式位和实际非客户区边距，避免把 Windows 保留的样式位当成可见系统框。
+自绘设置窗、开关、数值编辑和分类页签属于 UI；窗口按钮通过 egui 视口命令交给宿主执行，不在 UI 调 Win32。`DesktopSession::configure_auxiliary` 在辅助窗口创建后调用，Windows 的 `settings_surface` 处理设置窗的原生标题/八方向缩放命中，按 DPI 换算且保留按钮和内容客户区；仅附着当前进程的设置窗。`surface` 共享卡片与预览的尺寸/表面规则，预览消费已有采样，不启动独立采样服务。只读诊断分别暴露原始样式位和实际非客户区边距，避免把 Windows 保留的样式位当成可见系统框。
 
 1. 在 domain 定义输入、输出、状态与规则。
 2. 需要新系统能力时，在 interfaces 定义契约。

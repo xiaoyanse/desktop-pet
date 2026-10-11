@@ -23,89 +23,17 @@ pub enum Glyph {
     Pet,
 }
 impl Glyph {
-    fn segments(self) -> &'static [(i32, i32, i32, i32)] {
+    fn asset(self) -> &'static str {
         match self {
-            Self::Restore => &[
-                (1, 2, 15, 2),
-                (15, 2, 15, 14),
-                (15, 14, 1, 14),
-                (1, 14, 1, 2),
-                (1, 6, 15, 6),
-                (4, 10, 12, 10),
-            ],
-            Self::Settings => &[
-                (1, 4, 15, 4),
-                (1, 8, 15, 8),
-                (1, 12, 15, 12),
-                (5, 2, 5, 6),
-                (11, 6, 11, 10),
-                (7, 10, 7, 14),
-            ],
-            Self::Compact => &[
-                (1, 5, 15, 5),
-                (15, 5, 15, 11),
-                (15, 11, 1, 11),
-                (1, 11, 1, 5),
-                (5, 7, 5, 9),
-                (11, 7, 11, 9),
-            ],
-            Self::Memory => &[
-                (4, 4, 12, 4),
-                (12, 4, 12, 12),
-                (12, 12, 4, 12),
-                (4, 12, 4, 4),
-                (1, 6, 4, 6),
-                (1, 10, 4, 10),
-                (12, 6, 15, 6),
-                (12, 10, 15, 10),
-                (6, 1, 6, 4),
-                (10, 1, 10, 4),
-                (6, 12, 6, 15),
-                (10, 12, 10, 15),
-            ],
-            Self::Cursor => &[
-                (3, 1, 3, 13),
-                (3, 13, 7, 9),
-                (7, 9, 11, 15),
-                (11, 15, 13, 14),
-                (13, 14, 9, 8),
-                (9, 8, 15, 8),
-                (15, 8, 3, 1),
-            ],
-            Self::Exit => &[(2, 2, 14, 14), (14, 2, 2, 14)],
-            Self::Background => &[
-                (3, 3, 11, 3),
-                (11, 3, 11, 7),
-                (11, 7, 3, 7),
-                (3, 7, 3, 3),
-                (11, 5, 14, 5),
-                (14, 5, 14, 10),
-                (14, 10, 8, 10),
-                (8, 10, 8, 15),
-            ],
-            Self::Border => &[
-                (1, 1, 6, 1),
-                (1, 1, 1, 6),
-                (10, 1, 15, 1),
-                (15, 1, 15, 6),
-                (15, 10, 15, 15),
-                (15, 15, 10, 15),
-                (1, 10, 1, 15),
-                (1, 15, 6, 15),
-            ],
-            Self::Pet => &[
-                (2, 7, 2, 1),
-                (2, 1, 6, 5),
-                (6, 5, 10, 5),
-                (10, 5, 14, 1),
-                (14, 1, 14, 10),
-                (14, 10, 11, 14),
-                (11, 14, 5, 14),
-                (5, 14, 2, 10),
-                (2, 10, 2, 7),
-                (5, 8, 5, 10),
-                (11, 8, 11, 10),
-            ],
+            Self::Restore => "restore",
+            Self::Settings => "settings",
+            Self::Compact => "compact",
+            Self::Memory => "clean",
+            Self::Cursor => "unpin",
+            Self::Exit => "close",
+            Self::Background => "monitor",
+            Self::Border => "maximize",
+            Self::Pet => "appearance",
         }
     }
 }
@@ -156,6 +84,7 @@ pub fn popup(hwnd: HWND, items: &[(u32, &str, Glyph, bool)]) -> i32 {
         DestroyMenu(menu);
         DeleteObject(background);
         ACTIVE.with(|a| a.borrow_mut().clear());
+        super::native_artwork::clear();
         PostMessageW(hwnd, WM_NULL, 0, 0);
         selected
     }
@@ -235,33 +164,19 @@ pub unsafe fn handle(hwnd: HWND, msg: u32, l: LPARAM) -> Option<LRESULT> {
             &mut rect,
             DT_LEFT | DT_VCENTER | DT_SINGLELINE,
         );
-        let pen = CreatePen(
-            PS_SOLID,
-            scale.ceil() as i32,
-            if disabled {
-                rgb(90, 106, 119)
-            } else {
-                rgb(100, 210, 195)
-            },
+        let size = (28.0 * scale) as i32;
+        super::native_artwork::paint(
+            item.hDC,
+            [
+                item.rcItem.left + (10.0 * scale) as i32,
+                (item.rcItem.top + item.rcItem.bottom - size) / 2,
+                size,
+                size,
+            ],
+            glyph.asset(),
+            disabled,
         );
-        SelectObject(item.hDC, pen);
-        let x = item.rcItem.left + (14.0 * scale) as i32;
-        let y = (item.rcItem.top + item.rcItem.bottom) / 2 - (8.0 * scale) as i32;
-        for (x1, y1, x2, y2) in glyph.segments() {
-            MoveToEx(
-                item.hDC,
-                x + (*x1 as f32 * scale) as i32,
-                y + (*y1 as f32 * scale) as i32,
-                std::ptr::null_mut(),
-            );
-            LineTo(
-                item.hDC,
-                x + (*x2 as f32 * scale) as i32,
-                y + (*y2 as f32 * scale) as i32,
-            );
-        }
         RestoreDC(item.hDC, saved);
-        DeleteObject(pen);
         if !font.is_null() {
             DeleteObject(font);
         }
@@ -287,7 +202,10 @@ mod tests {
         ];
         for (i, glyph) in glyphs.iter().enumerate() {
             for other in &glyphs[i + 1..] {
-                assert_ne!(glyph.segments(), other.segments());
+                assert_ne!(
+                    crate::assets::get(glyph.asset()).rgba,
+                    crate::assets::get(other.asset()).rgba
+                );
             }
         }
     }

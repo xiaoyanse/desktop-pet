@@ -395,16 +395,17 @@ impl eframe::App for MonitorApp {
             None => {}
         }
         let previous = self.config.clone();
-        if self.flyout.active() {
-            self.services.desktop.configure_auxiliary();
-        }
-        if self.settings.show(
+        let settings_changed = self.settings.show(
             ctx,
             &mut self.config,
             &self.snapshot,
             &mut self.message,
             &mut self.services,
-        ) {
+        );
+        if self.flyout.active() || self.settings.open {
+            self.services.desktop.configure_auxiliary();
+        }
+        if settings_changed {
             self.config.normalize();
             self.alerts.clear();
             let devices_changed = (&previous.gpu, &previous.disk, &previous.network)

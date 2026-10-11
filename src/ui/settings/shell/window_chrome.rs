@@ -4,12 +4,13 @@ use crate::ui::common::{
 };
 use eframe::egui::{self, Color32, ResizeDirection as Direction};
 
-pub fn show(ctx: &egui::Context, logo: Option<&egui::TextureHandle>) -> bool {
+pub fn show(ctx: &egui::Context) -> bool {
     let maximized = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
     let mut close = false;
     egui::TopBottomPanel::top("settings-titlebar")
+        .show_separator_line(false)
         .exact_height(44.0)
-        .frame(egui::Frame::new().fill(Color32::from_rgb(16, 20, 23)))
+        .frame(egui::Frame::new().stroke(egui::Stroke::NONE))
         .show(ctx, |ui| {
             let (rect, _) = ui
                 .allocate_exact_size(egui::vec2(ui.available_width(), 44.0), egui::Sense::hover());
@@ -24,29 +25,14 @@ pub fn show(ctx: &egui::Context, logo: Option<&egui::TextureHandle>) -> bool {
             );
             if drag.double_clicked() {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-            } else if drag.hovered()
-                && ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary))
-            {
+            } else if ui.input(|i| {
+                i.pointer.button_pressed(egui::PointerButton::Primary)
+                    && i.pointer
+                        .press_origin()
+                        .is_some_and(|p| drag_rect.contains(p))
+            }) {
                 ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
-            if let Some(logo) = logo {
-                ui.painter().image(
-                    logo.id(),
-                    egui::Rect::from_center_size(
-                        rect.min + egui::vec2(28.0, 24.0),
-                        egui::vec2(24.0, 24.0),
-                    ),
-                    egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-                    Color32::WHITE,
-                );
-            }
-            ui.painter().text(
-                rect.min + egui::vec2(49.0, 24.0),
-                egui::Align2::LEFT_CENTER,
-                "桌面仪表  /  工作台",
-                egui::FontId::proportional(12.0),
-                theme::MUTED,
-            );
             for (index, label) in ["关闭设置", "最大化或还原", "最小化设置"]
                 .iter()
                 .enumerate()
@@ -62,45 +48,32 @@ pub fn show(ctx: &egui::Context, logo: Option<&egui::TextureHandle>) -> bool {
                 response.widget_info(|| {
                     egui::WidgetInfo::labeled(egui::WidgetType::Button, true, *label)
                 });
-                if response.hovered() || response.has_focus() {
-                    ui.painter().rect_filled(
-                        button,
-                        5,
+                ui.painter().circle_filled(
+                    button.center(),
+                    15.0,
+                    if response.hovered() || response.has_focus() {
                         if index == 0 {
-                            Color32::from_rgb(118, 44, 53)
+                            Color32::from_rgb(108, 57, 64)
                         } else {
-                            theme::SURFACE
-                        },
-                    );
-                }
-                let glyph = egui::Rect::from_center_size(button.center(), egui::vec2(12.0, 12.0));
-                match index {
-                    0 => icons::draw(ui.painter(), glyph, Icon::Cancel, theme::TEXT),
-                    1 => {
-                        if maximized {
-                            ui.painter().rect_stroke(
-                                glyph.translate(egui::vec2(2.0, -2.0)),
-                                1,
-                                egui::Stroke::new(1.0_f32, theme::MUTED),
-                                egui::StrokeKind::Inside,
-                            );
+                            theme::HOVER
                         }
-                        ui.painter()
-                            .rect_filled(glyph, 1, Color32::from_rgb(16, 20, 23));
-                        ui.painter().rect_stroke(
-                            glyph,
-                            1,
-                            egui::Stroke::new(1.0_f32, theme::TEXT),
-                            egui::StrokeKind::Inside,
-                        );
-                    }
-                    _ => {
-                        ui.painter().line_segment(
-                            [glyph.left_center(), glyph.right_center()],
-                            egui::Stroke::new(1.0_f32, theme::TEXT),
-                        );
-                    }
-                }
+                    } else {
+                        Color32::from_rgba_unmultiplied(16, 28, 41, 160)
+                    },
+                );
+                ui.painter().circle_stroke(
+                    button.center(),
+                    15.0,
+                    egui::Stroke::new(1.0_f32, theme::LINE),
+                );
+                let glyph = egui::Rect::from_center_size(button.center(), egui::vec2(18.0, 18.0));
+                let icon = match index {
+                    0 => Icon::Cancel,
+                    1 if maximized => Icon::Restore,
+                    1 => Icon::Maximize,
+                    _ => Icon::Minimize,
+                };
+                icons::draw(ui.painter(), glyph, icon, Color32::WHITE);
                 if response.clicked() {
                     match index {
                         0 => close = true,
@@ -140,7 +113,7 @@ pub fn resize(ctx: &egui::Context) {
     ))
     .rect_stroke(
         rect.shrink(0.5),
-        0,
+        18,
         egui::Stroke::new(1.0_f32, theme::LINE),
         egui::StrokeKind::Inside,
     );
@@ -159,9 +132,12 @@ pub fn resize(ctx: &egui::Context) {
                         Direction::NorthEast | Direction::SouthWest => egui::CursorIcon::ResizeNeSw,
                         Direction::NorthWest | Direction::SouthEast => egui::CursorIcon::ResizeNwSe,
                     });
-                    if ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary)) {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::BeginResize(direction));
-                    }
+                }
+                if ui.input(|i| {
+                    i.pointer.button_pressed(egui::PointerButton::Primary)
+                        && i.pointer.press_origin().is_some_and(|p| edge.contains(p))
+                }) {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::BeginResize(direction));
                 }
             });
     }
@@ -182,7 +158,7 @@ mod tests {
                 ..Default::default()
             },
             |ctx| {
-                *close = show(ctx, None);
+                *close = show(ctx);
                 resize(ctx);
             },
         )
@@ -263,6 +239,33 @@ mod tests {
                     .contains(&expected)
             );
         }
+    }
+
+    #[test]
+    fn coalesced_pointer_motion_does_not_lose_the_original_resize_press() {
+        let ctx = egui::Context::default();
+        let mut closed = false;
+        frame(&ctx, Vec::new(), &mut closed);
+        let edge = egui::pos2(918.0, 390.0);
+        let out = frame(
+            &ctx,
+            vec![
+                egui::Event::PointerMoved(edge),
+                egui::Event::PointerButton {
+                    pos: edge,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                },
+                egui::Event::PointerMoved(egui::pos2(700.0, 390.0)),
+            ],
+            &mut closed,
+        );
+        assert!(
+            out.viewport_output[&egui::ViewportId::ROOT]
+                .commands
+                .contains(&egui::ViewportCommand::BeginResize(Direction::East))
+        );
     }
     #[test]
     fn resize_regions_cover_all_edges_without_hiding_content_or_title_buttons() {

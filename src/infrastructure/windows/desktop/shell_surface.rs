@@ -26,6 +26,14 @@ pub fn attach(hwnd: HWND) {
 }
 pub fn auxiliary() {
     unsafe {
+        let settings = FindWindowW(std::ptr::null(), native::wide("资源监视器 · 设置").as_ptr());
+        let mut settings_pid = 0;
+        if !settings.is_null() {
+            GetWindowThreadProcessId(settings, &mut settings_pid);
+            if settings_pid == std::process::id() {
+                super::settings_surface::attach(settings);
+            }
+        }
         let hwnd = FindWindowW(
             std::ptr::null(),
             native::wide("资源助手 · 快捷操作").as_ptr(),
