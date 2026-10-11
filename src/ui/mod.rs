@@ -1,0 +1,13 @@
+mod appearance;
+mod cleanup_page;
+mod controls;
+mod details;
+mod flyout;
+mod icons;
+pub mod monitor;
+mod panel;
+mod pet;
+mod pet_motion;
+mod settings;
+mod theme;
+mod trend;

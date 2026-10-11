@@ -323,6 +323,7 @@ name = "desktop-meter"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "image",
  "raw-window-handle",
  "serde",
  "serde_json",
