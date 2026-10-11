@@ -8,7 +8,9 @@ mod ui;
 use domain::config;
 use infrastructure::{
     storage::settings::{JsonSettings, data_dir},
-    windows::{cleanup, desktop::WindowsDesktop, diagnostics, native, sampler::Sampler},
+    windows::{
+        desktop::WindowsDesktop, diagnostics, memory::cleanup, monitoring::sampler::Sampler, native,
+    },
 };
 use interfaces::{ResourceSampler, SettingsStore};
 

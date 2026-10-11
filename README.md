@@ -7,12 +7,22 @@
 ```text
 src/
   main.rs                       # 启动入口、依赖装配
-  ui/                           # 界面、交互、绘制
+  ui/
+    monitor.rs                  # 主界面协调与稳定入口
+    common/                     # 主题、图标、基础控件、共享清理确认
+    monitoring/                 # 资源卡片、详情、趋势、悬停操作
+    companion/                  # 宠物、动作与快捷入口
+    settings/
+      pages/                    # 按功能划分的设置页面
+      shell/                    # 导航、自绘标题栏与缩放
   application/                  # 用例、后台任务、服务协调
   domain/                       # 数据模型、设置规则、清理策略
-  interfaces/                   # 系统能力与存储的接口契约
+  interfaces/                   # 监测、桌面、存储、清理的接口契约
   infrastructure/
-    windows/                    # Win32、PDH、DXGI、托盘等实现
+    windows/
+      desktop/                  # 窗口、托盘、菜单、拖动与贴边
+      monitoring/               # Win32、PDH、DXGI 与进程采样
+      memory/                   # 清理操作与管理员辅助进程
     storage/                    # JSON 设置和操作记录
 tests/                          # 跨模块与架构回归测试
 docs/                           # 需求、架构、变更与验证记录
@@ -26,9 +36,9 @@ scripts/                        # 开发与验证辅助脚本
 需要 Windows 和 Rust MSVC 工具链。
 
 ```powershell
-cargo test
-cargo clippy --all-targets -- -D warnings
-cargo build --release
+cargo test -j 1
+cargo clippy --all-targets -j 1 -- -D warnings
+cargo build --release -j 1
 ```
 
 运行 `target/release/desktop-meter.exe`。设置存于 `%LOCALAPPDATA%/DesktopMeter/settings.json`；升级目录结构不会改变用户设置位置。

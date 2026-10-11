@@ -1,10 +1,14 @@
-use super::{details, flyout, pet};
+use super::{
+    common::theme,
+    companion::{flyout, pet},
+    monitoring::{controls, details, surface},
+};
 use crate::{
     application::{Dependencies, Services, monitoring::MonitorWorker},
     domain::{config::Config, resources::Snapshot},
     interfaces::DesktopAction as Action,
     ui::{
-        panel::{self, Alerts, History},
+        monitoring::panel::{self, Alerts, History},
         settings::Settings,
     },
 };
@@ -47,7 +51,7 @@ impl MonitorApp {
         dependencies: Dependencies,
     ) -> Self {
         let ctx = cc.egui_ctx.clone();
-        super::theme::setup(&ctx);
+        theme::setup(&ctx);
         let mut message = warning.unwrap_or_default();
         if let Some((name, data)) = dependencies.font {
             let mut fonts = egui::FontDefinitions::default();
@@ -210,7 +214,7 @@ impl MonitorApp {
         let screen_height = ctx
             .input(|i| i.viewport().monitor_size.map(|v| v.y))
             .unwrap_or(900.0);
-        let size = super::surface::size(&self.config, &rows, self.expanded, screen_height);
+        let size = surface::size(&self.config, &rows, self.expanded, screen_height);
         if self.size != size {
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
             self.size = size;
@@ -246,7 +250,7 @@ impl MonitorApp {
             return;
         }
         egui::CentralPanel::default()
-            .frame(super::surface::frame(&self.config))
+            .frame(surface::frame(&self.config))
             .show(ctx, |ui| {
                 let drag = ui.interact(
                     ui.max_rect(),
@@ -327,7 +331,7 @@ impl MonitorApp {
         self.dirty_at = Some(Instant::now());
     }
     fn hover_controls(&mut self, ctx: &egui::Context) {
-        use super::controls::{self, Action};
+        use controls::Action;
         let (action, tip) = controls::toolbar(ctx, self.config.compact, self.locked, self.expanded);
         self.hover_quick = tip == Some("快速清理低优先级待机缓存");
         self.services.desktop.tooltip(

@@ -82,8 +82,8 @@ pub fn message(text: &str) {
     }
 }
 pub fn card_menu(hwnd: HWND, compact: bool) -> i32 {
-    use super::menus::Glyph;
-    super::menus::popup(
+    use super::desktop::menus::Glyph;
+    super::desktop::menus::popup(
         hwnd,
         &[
             (
