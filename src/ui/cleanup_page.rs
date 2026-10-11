@@ -1,4 +1,4 @@
-use super::{actions, cleanup_choice, icons::Icon, panel, settings::section, theme};
+use super::{actions, cleanup_choice, icons::Icon, panel, settings::section, theme, widgets};
 use crate::{
     application::cleanup::CleanupService,
     domain::{
@@ -100,27 +100,39 @@ pub fn show(
             );
         }
         ui.add_enabled_ui(service.elevated(), |ui| {
-            ui.checkbox(&mut config.cleanup.auto_load, "物理内存占用达到阈值时清理");
-            ui.add_enabled(
-                config.cleanup.auto_load,
-                egui::Slider::new(&mut config.cleanup.load_percent, 1..=100)
-                    .text("占用阈值")
-                    .suffix("%"),
+            widgets::switch(
+                ui,
+                &mut config.cleanup.auto_load,
+                "物理内存占用达到阈值时清理",
             );
-            ui.checkbox(&mut config.cleanup.auto_interval, "按时间间隔清理");
-            ui.add_enabled(
-                config.cleanup.auto_interval,
-                egui::Slider::new(&mut config.cleanup.interval_minutes, 1..=1440)
-                    .logarithmic(true)
-                    .text("间隔")
-                    .suffix(" 分钟"),
+            ui.add_enabled_ui(config.cleanup.auto_load, |ui| {
+                let mut threshold = config.cleanup.load_percent as u64;
+                if widgets::integer(ui, "占用阈值", &mut threshold, 1..=100, "%") {
+                    config.cleanup.load_percent = threshold as u32;
+                }
+            });
+            ui.add_space(8.0);
+            widgets::switch(ui, &mut config.cleanup.auto_interval, "按时间间隔清理");
+            ui.add_enabled_ui(config.cleanup.auto_interval, |ui| {
+                widgets::integer(
+                    ui,
+                    "清理间隔",
+                    &mut config.cleanup.interval_minutes,
+                    1..=1440,
+                    " 分钟",
+                );
+            });
+            ui.add_space(8.0);
+            widgets::integer(
+                ui,
+                "最短冷却",
+                &mut config.cleanup.cooldown_minutes,
+                1..=1440,
+                " 分钟",
             );
-            ui.add(
-                egui::Slider::new(&mut config.cleanup.cooldown_minutes, 1..=60)
-                    .text("最短冷却")
-                    .suffix(" 分钟"),
-            );
-            ui.checkbox(
+            ui.add_space(8.0);
+            widgets::switch(
+                ui,
                 &mut config.cleanup.allow_sensitive_auto,
                 "允许自动执行影响应用或磁盘的清理项（可能停顿）",
             );
@@ -136,7 +148,8 @@ pub fn show(
         ));
         ui.weak("自动规则默认关闭；未明确允许时，仅可自动清低优先级待机缓存和合并相同页。程序运行期间生效。");
         ui.add_space(8.0);
-        ui.checkbox(
+        widgets::switch(
+            ui,
             &mut config.cleanup.hotkey,
             "启用 Ctrl+Alt+C 打开快速清理面板",
         );
@@ -194,7 +207,7 @@ pub fn history(ui: &mut egui::Ui, service: &CleanupService) {
         });
         return;
     }
-    for report in service.reports.iter().rev() {
+    for (index, report) in service.reports.iter().enumerate().rev() {
         section(
             ui,
             &format!(
@@ -212,20 +225,33 @@ pub fn history(ui: &mut egui::Ui, service: &CleanupService) {
             ),
             |ui| {
                 ui.label(report.summary());
-                for result in &report.results {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.colored_label(
-                            if result.success {
-                                Color32::from_rgb(90, 214, 145)
-                            } else {
-                                Color32::from_rgb(255, 102, 112)
-                            },
-                            if result.success { "成功" } else { "失败" },
-                        );
-                        ui.label(result.operation.label());
-                        ui.weak(&result.detail);
+                ui.add_space(10.0);
+                egui::Grid::new(("cleanup-result-table", index, report.at))
+                    .num_columns(3)
+                    .striped(true)
+                    .spacing(egui::vec2(14.0, 10.0))
+                    .show(ui, |ui| {
+                        for name in ["操作", "结果", "说明"] {
+                            ui.label(RichText::new(name).small().color(theme::MUTED));
+                        }
+                        ui.end_row();
+                        for result in &report.results {
+                            ui.add(egui::Label::new(result.operation.label()).wrap());
+                            ui.colored_label(
+                                if result.success {
+                                    Color32::from_rgb(90, 214, 145)
+                                } else {
+                                    Color32::from_rgb(255, 102, 112)
+                                },
+                                if result.success { "成功" } else { "失败" },
+                            );
+                            ui.add(
+                                egui::Label::new(RichText::new(&result.detail).color(theme::MUTED))
+                                    .wrap(),
+                            );
+                            ui.end_row();
+                        }
                     });
-                }
             },
         );
     }

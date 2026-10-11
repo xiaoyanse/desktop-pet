@@ -1,4 +1,4 @@
-use super::{panel, pet_motion};
+use super::{panel, pet_motion, theme, widgets};
 use crate::domain::{
     config::{Config, Metric},
     desktop::PetKind,
@@ -117,46 +117,8 @@ impl Sprites {
                 );
                 let badge =
                     egui::Rect::from_min_size(egui::pos2(5.0, 64.0), egui::vec2(62.0, 18.0));
-                ui.painter()
-                    .rect_filled(badge, 8, Color32::from_rgb(23, 32, 43));
-                let item = snapshot
-                    .values
-                    .get(&Metric::Memory)
-                    .map(|v| ("RAM", v))
-                    .or_else(|| snapshot.values.get(&Metric::Cpu).map(|v| ("CPU", v)));
-                let text = item
-                    .map(|(label, v)| {
-                        format!(
-                            "{label} {}",
-                            v.value
-                                .map(|n| format!("{n:.0}%"))
-                                .unwrap_or_else(|| "—".into())
-                        )
-                    })
-                    .unwrap_or_else(|| "资源助手".into());
-                let rows = panel::rows(config, snapshot);
-                let color = rows
-                    .iter()
-                    .find(|row| {
-                        row.row.metric
-                            == item
-                                .map(|(name, _)| {
-                                    if name == "RAM" {
-                                        Metric::Memory
-                                    } else {
-                                        Metric::Cpu
-                                    }
-                                })
-                                .unwrap_or(Metric::Memory)
-                    })
-                    .map(|row| {
-                        panel::tint(
-                            panel::level(row),
-                            config.status_colors,
-                            Color32::from_rgb(config.color[0], config.color[1], config.color[2]),
-                        )
-                    })
-                    .unwrap_or(Color32::LIGHT_GRAY);
+                ui.painter().rect_filled(badge, 8, theme::BACKGROUND);
+                let (text, color) = self::badge(config, snapshot);
                 ui.painter().text(
                     badge.center(),
                     egui::Align2::CENTER_CENTER,
@@ -174,7 +136,7 @@ impl Sprites {
                     let texture = self.texture(ui.ctx(), kind, false);
                     let response = ui.add(
                         egui::Image::new(texture)
-                            .fit_to_exact_size(egui::vec2(60.0, 60.0))
+                            .fit_to_exact_size(egui::vec2(48.0, 48.0))
                             .sense(egui::Sense::click()),
                     );
                     if response.clicked() {
@@ -182,7 +144,7 @@ impl Sprites {
                     }
                     ui.label(
                         RichText::new(kind.label()).color(if config.pet_kind == kind {
-                            Color32::from_rgb(100, 210, 195)
+                            theme::ACCENT
                         } else {
                             Color32::LIGHT_GRAY
                         }),
@@ -191,20 +153,67 @@ impl Sprites {
                         ui.painter().rect_stroke(
                             response.rect,
                             8,
-                            egui::Stroke::new(1.0_f32, Color32::from_rgb(100, 210, 195)),
+                            egui::Stroke::new(1.0_f32, theme::ACCENT),
                             egui::StrokeKind::Inside,
                         );
                     }
                 });
-                ui.add_space(22.0);
+                ui.add_space(12.0);
             }
         });
-        ui.checkbox(
+        widgets::switch(
+            ui,
             &mut config.pet_animation,
             "鼠标跟随、眨眼、悬停抬头、点击回应及拖放摇摆",
         );
         ui.weak("头和眼睛跟随全屏鼠标；悬停显示快捷操作，双击或托盘恢复完整卡片。移动动画最多 15 帧/秒；关闭动画后停止鼠标轮询。");
     }
+}
+pub fn badge(config: &Config, snapshot: &Snapshot) -> (String, Color32) {
+    let rows = panel::rows(config, snapshot);
+    let item = rows
+        .iter()
+        .find(|r| r.row.metric == Metric::Memory)
+        .or_else(|| rows.iter().find(|r| r.row.metric == Metric::Cpu))
+        .or_else(|| rows.first());
+    let Some(item) = item else {
+        return ("资源助手".into(), Color32::LIGHT_GRAY);
+    };
+    let label = match item.row.metric {
+        Metric::Cpu => "CPU",
+        Metric::Memory => "RAM",
+        Metric::Gpu => "GPU",
+        Metric::Frequency => "频率",
+        Metric::Used => "已用",
+        Metric::Available => "可用",
+        Metric::Commit => "提交",
+        Metric::Paged => "分页",
+        Metric::Nonpaged => "非页",
+        Metric::Dedicated => "显存",
+        Metric::Shared => "共享",
+        Metric::DiskSpace => "磁盘",
+        Metric::DiskFree => "剩余",
+        Metric::DiskBusy => "I/O",
+        Metric::DiskRead => "读",
+        Metric::DiskWrite => "写",
+        Metric::Upload => "上",
+        Metric::Download => "下",
+    };
+    let value = match item.reading.value {
+        None => "—".into(),
+        Some(value) if item.row.metric.percent() => format!("{value:.0}%"),
+        Some(_) => item
+            .reading
+            .text
+            .replace(" GB", "G")
+            .replace(" KB/s", "K/s")
+            .replace(" MB/s", "M/s"),
+    };
+    let color = Color32::from_rgb(config.color[0], config.color[1], config.color[2]);
+    (
+        format!("{label} {value}"),
+        panel::tint(panel::level(item), config.status_colors, color),
+    )
 }
 fn animation(seconds: f64, enabled: bool, hovering: bool) -> (bool, Option<Duration>) {
     if !enabled {
@@ -238,5 +247,35 @@ mod tests {
             Duration::from_millis(100)
         );
         assert!(DATA.iter().all(|data| data.len() == 96 * 96 * 4));
+    }
+    #[test]
+    fn pet_badge_respects_enabled_metrics_and_never_invents_missing_readings() {
+        let mut config = Config::default();
+        let mut snapshot = Snapshot::default();
+        snapshot.values.insert(
+            Metric::Memory,
+            crate::domain::resources::Reading::percent(88.0, "test"),
+        );
+        snapshot.values.insert(
+            Metric::Cpu,
+            crate::domain::resources::Reading::percent(23.0, "test"),
+        );
+        for row in &mut config.rows {
+            row.enabled = row.metric == Metric::Cpu;
+        }
+        assert_eq!(badge(&config, &snapshot).0, "CPU 23%");
+        for row in &mut config.rows {
+            row.enabled = row.metric == Metric::Gpu;
+        }
+        assert_eq!(badge(&config, &snapshot).0, "GPU —");
+        snapshot.values.insert(
+            Metric::Gpu,
+            crate::domain::resources::Reading::percent(51.0, "test"),
+        );
+        assert_eq!(badge(&config, &snapshot).0, "GPU 51%");
+        for row in &mut config.rows {
+            row.enabled = false;
+        }
+        assert_eq!(badge(&config, &snapshot).0, "资源助手");
     }
 }

@@ -210,16 +210,7 @@ impl MonitorApp {
         let screen_height = ctx
             .input(|i| i.viewport().monitor_size.map(|v| v.y))
             .unwrap_or(900.0);
-        let size = if self.config.pet_mode {
-            pet::SIZE
-        } else if self.config.compact {
-            panel::compact_size(&rows)
-        } else {
-            egui::vec2(
-                240.0,
-                panel::height(&rows, self.expanded).min((screen_height - 80.0).max(180.0)),
-            )
-        };
+        let size = super::surface::size(&self.config, &rows, self.expanded, screen_height);
         if self.size != size {
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
             self.size = size;
@@ -254,24 +245,8 @@ impl MonitorApp {
             }
             return;
         }
-        let background = if self.config.background {
-            Color32::from_rgba_unmultiplied(17, 23, 31, (self.config.opacity * 255.0) as u8)
-        } else {
-            Color32::TRANSPARENT
-        };
-        let border = if self.config.border {
-            egui::Stroke::new(1.0_f32, Color32::from_rgba_unmultiplied(160, 180, 205, 70))
-        } else {
-            egui::Stroke::NONE
-        };
         egui::CentralPanel::default()
-            .frame(
-                egui::Frame::new()
-                    .fill(background)
-                    .corner_radius(9)
-                    .inner_margin(if self.config.compact { 6 } else { 9 })
-                    .stroke(border),
-            )
+            .frame(super::surface::frame(&self.config))
             .show(ctx, |ui| {
                 let drag = ui.interact(
                     ui.max_rect(),

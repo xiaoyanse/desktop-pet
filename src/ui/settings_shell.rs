@@ -5,12 +5,7 @@ use super::{
 use crate::domain::{config::Config, resources::Snapshot};
 use eframe::egui::{self, Color32, RichText};
 
-pub fn navigation(
-    ctx: &egui::Context,
-    tab: usize,
-    logo: Option<&egui::TextureHandle>,
-    config: &Config,
-) -> Option<usize> {
+pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<usize> {
     let mut next = None;
     egui::SidePanel::left("settings-navigation")
         .exact_width(160.0)
@@ -21,20 +16,7 @@ pub fn navigation(
                 .inner_margin(16),
         )
         .show(ctx, |ui| {
-            ui.add_space(10.0);
-            ui.horizontal(|ui| {
-                if let Some(logo) = logo {
-                    ui.add(egui::Image::new(logo).fit_to_exact_size(egui::vec2(30.0, 30.0)));
-                }
-                ui.label(RichText::new("桌面仪表").size(17.0).strong());
-            });
-            ui.add_space(8.0);
-            ui.label(
-                RichText::new("DESKTOP METER")
-                    .size(10.0)
-                    .color(theme::MUTED),
-            );
-            ui.add_space(32.0);
+            ui.add_space(16.0);
             ui.label(RichText::new("工作台").size(11.0).color(theme::MUTED));
             ui.add_space(10.0);
             for (index, icon, name) in [
@@ -117,7 +99,7 @@ pub fn navigation(
     next
 }
 
-pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapshot) -> bool {
+pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapshot) {
     let (title, description) = match tab {
         0 => ("监测项目", "选择需要的数据，按你的工作习惯排列。"),
         1 => ("外观与宠物", "让桌面仪表融入你的工作空间。"),
@@ -126,13 +108,7 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
         4 => ("内存清理", "按工作状态选择档位，每次操作都明确可查。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
-    let mut close = false;
-    ui.horizontal(|ui| {
-        ui.label(RichText::new(title).size(26.0).strong());
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            close = icons::button(ui, Icon::Cancel, "关闭设置").clicked();
-        });
-    });
+    ui.label(RichText::new(title).size(26.0).strong());
     ui.label(RichText::new(description).size(13.0).color(theme::MUTED));
     ui.add_space(16.0);
     ui.horizontal_wrapped(|ui| {
@@ -158,5 +134,4 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
     ui.add_space(12.0);
     ui.separator();
     ui.add_space(18.0);
-    close
 }

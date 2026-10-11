@@ -47,8 +47,29 @@ pub fn inspect(path: &std::path::Path) -> Result<(), String> {
                 return None;
             }
             let style = GetWindowLongPtrW(window, GWL_EXSTYLE) as u32;
+            let frame_style = GetWindowLongPtrW(window, GWL_STYLE) as u32;
+            let mut bounds = RECT::default();
+            GetWindowRect(window, &mut bounds);
+            let mut client = RECT::default();
+            let mut origin = POINT::default();
+            if GetClientRect(window, &mut client) == 0 || ClientToScreen(window, &mut origin) == 0 {
+                return None;
+            }
+            // Winit keeps caption style bits for Windows snapping even without decorations.
+            // Measure the actual non-client area instead of treating those bits as a visible frame.
+            let insets = [
+                origin.x - bounds.left,
+                origin.y - bounds.top,
+                bounds.right - origin.x - client.right,
+                bounds.bottom - origin.y - client.bottom,
+            ];
             Some(
-                serde_json::json!({"toolWindow":style & WS_EX_TOOLWINDOW != 0,"appWindow":style & WS_EX_APPWINDOW != 0}),
+                serde_json::json!({"toolWindow":style & WS_EX_TOOLWINDOW != 0,"appWindow":style & WS_EX_APPWINDOW != 0,
+                    "captionStyleBit":frame_style & WS_CAPTION != 0,
+                    "borderStyleBit":frame_style & (WS_BORDER | WS_DLGFRAME) != 0,
+                    "nonClientInsets":insets,
+                    "maximized":IsZoomed(window) != 0,"minimized":IsIconic(window) != 0,
+                    "rect":[bounds.left,bounds.top,bounds.right,bounds.bottom]}),
             )
         };
         let report = serde_json::json!({"pid": pid, "executable": actual, "dpi": GetDpiForWindow(hwnd),

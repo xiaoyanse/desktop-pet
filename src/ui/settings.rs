@@ -1,8 +1,4 @@
-use super::{
-    cleanup_page,
-    icons::{self, Icon},
-    settings_shell, theme,
-};
+use super::{cleanup_page, settings_shell, theme, widgets};
 use crate::{
     application::Services,
     domain::{
@@ -17,6 +13,7 @@ pub struct Settings {
     tab: usize,
     pub open: bool,
     editing: Option<Metric>,
+    metric_filter: Option<&'static str>,
     logo: Option<egui::TextureHandle>,
     confirm_clean: crate::domain::cleanup_profile::Review,
     pets: super::pet::Sprites,
@@ -51,6 +48,8 @@ impl Settings {
             egui::ViewportBuilder::default()
                 .with_title("资源监视器 · 设置")
                 .with_taskbar(true)
+                .with_decorations(false)
+                .with_resizable(true)
                 .with_inner_size([920.0, 780.0])
                 .with_min_inner_size([840.0, 600.0])
                 .with_always_on_top(),
@@ -58,32 +57,39 @@ impl Settings {
                 if ctx.input(|i| i.viewport().close_requested()) {
                     closed = true;
                 }
-                if let Some(tab) =
-                    settings_shell::navigation(ctx, self.tab, self.logo.as_ref(), config)
-                {
+                closed |= super::window_chrome::show(ctx, self.logo.as_ref());
+                if let Some(tab) = settings_shell::navigation(ctx, self.tab, config) {
                     self.confirm_clean.cancel();
                     self.tab = tab;
                 }
                 egui::CentralPanel::default()
                     .frame(egui::Frame::new().fill(theme::BACKGROUND).inner_margin(28))
                     .show(ctx, |ui| {
-                        closed |= settings_shell::header(ui, self.tab, config, snapshot);
-                        egui::ScrollArea::vertical()
-                            .id_salt(("settings-scroll", self.tab))
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| match self.tab {
-                                0 => metrics(ui, config, &mut self.editing),
-                                1 => super::appearance::show(ui, config, &mut self.pets),
-                                2 => devices(ui, config, snapshot),
-                                3 => general(ui, config, message, services),
-                                4 => cleanup_page::show(
-                                    ui,
-                                    config,
-                                    &mut services.cleaner,
-                                    &mut self.confirm_clean,
-                                ),
-                                _ => cleanup_page::history(ui, &services.cleaner),
-                            });
+                        settings_shell::header(ui, self.tab, config, snapshot);
+                        if self.tab == 1 {
+                            super::appearance::show(ui, config, &mut self.pets, snapshot);
+                        } else {
+                            egui::ScrollArea::vertical()
+                                .id_salt(("settings-scroll", self.tab))
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| match self.tab {
+                                    0 => super::metrics_page::show(
+                                        ui,
+                                        config,
+                                        &mut self.editing,
+                                        &mut self.metric_filter,
+                                    ),
+                                    2 => devices(ui, config, snapshot),
+                                    3 => general(ui, config, message, services),
+                                    4 => cleanup_page::show(
+                                        ui,
+                                        config,
+                                        &mut services.cleaner,
+                                        &mut self.confirm_clean,
+                                    ),
+                                    _ => cleanup_page::history(ui, &services.cleaner),
+                                });
+                        }
                         if !message.is_empty() {
                             ui.add_space(12.0);
                             ui.label(
@@ -93,6 +99,7 @@ impl Settings {
                             );
                         }
                     });
+                super::window_chrome::resize(ctx);
             },
         );
         if closed {
@@ -115,116 +122,6 @@ pub fn section(ui: &mut egui::Ui, title: &str, content: impl FnOnce(&mut egui::U
             content(ui);
         });
     ui.add_space(14.0);
-}
-fn metrics(ui: &mut egui::Ui, config: &mut Config, editing: &mut Option<Metric>) {
-    ui.label(
-        RichText::new("绿色 < 黄色阈值 · 黄色 < 红色阈值 · 红色 ≥ 红色阈值")
-            .size(12.0)
-            .color(Color32::from_rgb(141, 188, 181)),
-    );
-    ui.add_space(14.0);
-    let mut movement = None;
-    let len = config.rows.len();
-    for (index, row) in config.rows.iter_mut().enumerate() {
-        ui.push_id(row.metric, |ui| {
-            egui::Frame::new()
-                .fill(theme::SURFACE)
-                .corner_radius(8)
-                .inner_margin(10)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.allocate_ui(egui::vec2(135.0, 26.0), |ui| {
-                            ui.checkbox(&mut row.enabled, row.metric.label());
-                        });
-                        ui.checkbox(&mut row.trend, "趋势");
-                        if row.metric.color_supported() {
-                            let summary = format!(
-                                "{} / {}{}",
-                                row.warning_threshold.round(),
-                                row.threshold.round(),
-                                if row.metric.color_percent() {
-                                    "%"
-                                } else {
-                                    " GB"
-                                }
-                            );
-                            ui.label(
-                                RichText::new(summary)
-                                    .size(11.0)
-                                    .color(Color32::from_rgb(150, 171, 188)),
-                            );
-                            if icons::button(ui, Icon::General, "设置颜色阈值及持续告警").clicked()
-                            {
-                                *editing = if *editing == Some(row.metric) {
-                                    None
-                                } else {
-                                    Some(row.metric)
-                                };
-                            }
-                        }
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui
-                                .add_enabled_ui(index + 1 < len, |ui| {
-                                    icons::button(ui, Icon::Down, "下移")
-                                })
-                                .inner
-                                .clicked()
-                            {
-                                movement = Some((index, index + 1));
-                            }
-                            if ui
-                                .add_enabled_ui(index > 0, |ui| icons::button(ui, Icon::Up, "上移"))
-                                .inner
-                                .clicked()
-                            {
-                                movement = Some((index, index - 1));
-                            }
-                        });
-                    });
-                    if *editing == Some(row.metric) && row.metric.color_supported() {
-                        ui.add_space(10.0);
-                        let max = if row.metric.color_percent() {
-                            100.0
-                        } else {
-                            (row.warning_threshold.max(row.threshold) * 2.0).max(32.0)
-                        };
-                        let suffix = if row.metric.color_percent() {
-                            "%"
-                        } else {
-                            " GB"
-                        };
-                        ui.horizontal(|ui| {
-                            ui.colored_label(Color32::from_rgb(248, 200, 82), "黄色");
-                            ui.add(
-                                egui::Slider::new(&mut row.warning_threshold, 0.0..=max)
-                                    .suffix(suffix)
-                                    .fixed_decimals(0),
-                            );
-                        });
-                        ui.horizontal(|ui| {
-                            ui.colored_label(Color32::from_rgb(255, 102, 112), "红色");
-                            ui.add(
-                                egui::Slider::new(&mut row.threshold, 0.0..=max)
-                                    .suffix(suffix)
-                                    .fixed_decimals(0),
-                            );
-                        });
-                        if row.metric.low_warning() {
-                            ui.weak("剩余容量越低压力越高：低于阈值变色。");
-                        }
-                        if row.metric.alert_supported() {
-                            ui.checkbox(&mut row.alert, "连续超限 10 秒额外显示压力标记");
-                        }
-                    }
-                });
-            ui.add_space(5.0);
-        });
-    }
-    if let Some((a, b)) = movement {
-        config.rows.swap(a, b);
-    }
-    ui.add_space(12.0);
-    ui.weak("GPU / 磁盘活动颜色表示负载；读写速度与内核池大小保持主题色。");
 }
 fn devices(ui: &mut egui::Ui, config: &mut Config, snapshot: &Snapshot) {
     section(ui, "显卡", |ui| {
@@ -287,13 +184,13 @@ fn general(ui: &mut egui::Ui, config: &mut Config, message: &mut String, service
         ui.weak("建议 2 秒；5 秒进一步减少常驻开销。");
     });
     section(ui, "压力提示与贴边", |ui| {
-        ui.checkbox(&mut config.warnings, "连续超限 10 秒显示压力标记");
-        ui.checkbox(&mut config.snap_edges, "靠近屏幕四边自动贴边");
+        widgets::switch(ui, &mut config.warnings, "连续超限 10 秒显示压力标记");
+        widgets::switch(ui, &mut config.snap_edges, "靠近屏幕四边自动贴边");
         ui.weak("无论是否贴边，整个窗口均限制在屏幕工作区内；切换视图后仍保持可见。");
     });
     section(ui, "启动与恢复", |ui| {
         let mut autostart = services.desktop.autostart();
-        if ui.checkbox(&mut autostart, "登录 Windows 时启动").changed() {
+        if widgets::switch(ui, &mut autostart, "登录 Windows 时启动").changed() {
             *message = match services.desktop.set_autostart(autostart) {
                 Ok(()) => "开机启动设置已更新".into(),
                 Err(e) => e,
