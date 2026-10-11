@@ -1,10 +1,12 @@
-use super::{
-    icons::{self, Icon},
-    settings::section,
-};
+use super::{actions, cleanup_choice, icons::Icon, panel, settings::section, theme};
 use crate::{
     application::cleanup::CleanupService,
-    domain::{cleanup::Operation, config::Config},
+    domain::{
+        cleanup::Operation,
+        cleanup_profile::{Review, operation_names},
+        config::{Config, Metric, Row},
+        resources::Reading,
+    },
 };
 use eframe::egui::{self, Color32, RichText};
 
@@ -12,24 +14,29 @@ pub fn show(
     ui: &mut egui::Ui,
     config: &mut Config,
     service: &mut CleanupService,
-    confirm: &mut bool,
+    confirm: &mut Review,
 ) {
     section(ui, "当前内存", |ui| {
         if let Some(status) = &service.status {
-            ui.horizontal_wrapped(|ui| {
-                ui.label(RichText::new(format!("{}%", status.load)).size(28.0).color(
-                    if status.load >= 90 {
-                        Color32::from_rgb(255, 102, 112)
-                    } else {
-                        Color32::from_rgb(100, 210, 195)
-                    },
-                ));
-                ui.label(format!(
-                    "可用 {:.2} / {:.2} GB",
-                    status.available as f64 / 1073741824.0,
-                    status.total as f64 / 1073741824.0
-                ));
+            ui.columns(3, |columns| {
+                columns[0].weak("物理内存占用");
+                columns[0].label(
+                    RichText::new(format!("{}%", status.load))
+                        .size(28.0)
+                        .color(memory_tint(config, status.load)),
+                );
+                columns[1].weak("可用内存");
+                columns[1].label(
+                    RichText::new(format!("{:.2} GB", status.available as f64 / 1073741824.0))
+                        .size(24.0),
+                );
+                columns[2].weak("物理内存总量");
+                columns[2].label(
+                    RichText::new(format!("{:.1} GB", status.total as f64 / 1073741824.0))
+                        .size(24.0),
+                );
             });
+            ui.add_space(8.0);
             ui.weak(format!(
                 "提交 {:.2} / {:.2} GB · 系统缓存 {:.2} GB",
                 status.commit as f64 / 1073741824.0,
@@ -46,75 +53,44 @@ pub fn show(
             ui.weak("等待内存状态…");
         }
     });
-    section(ui, "清理方式", |ui| {
-        for op in Operation::ALL {
-            ui.push_id(op, |ui| {
-                let mut enabled = config.cleanup.operations.contains(&op);
-                if ui.checkbox(&mut enabled, op.label()).changed() {
-                    if enabled {
-                        config.cleanup.operations.push(op);
-                    } else {
-                        config.cleanup.operations.retain(|o| *o != op);
-                    }
-                }
-                ui.label(
-                    RichText::new(op.description())
-                        .size(11.5)
-                        .color(Color32::from_rgb(146, 167, 182)),
-                );
-                ui.add_space(7.0);
-            });
+    section(ui, "选择清理档位", |ui| {
+        if cleanup_choice::profiles(ui, &mut config.cleanup, !service.busy()) {
+            confirm.cancel();
         }
-        ui.separator();
         ui.add_space(8.0);
-        ui.horizontal(|ui| {
-            if ui
-                .add_enabled_ui(
-                    !service.busy() && !config.cleanup.operations.is_empty(),
-                    |ui| icons::button(ui, Icon::Clean, "执行所选清理方式"),
-                )
-                .inner
-                .clicked()
-            {
-                *confirm = true;
-            }
-            ui.label(if service.busy() {
-                "正在处理，界面仍可操作"
-            } else {
-                "点击清扫图标执行一次"
-            });
-        });
-        if *confirm {
-            ui.add_space(10.0);
-            ui.colored_label(
-                Color32::from_rgb(248, 200, 82),
-                "将执行以下已选操作，部分操作可能导致应用调页或磁盘活动。",
-            );
-            ui.label(
-                config
-                    .cleanup
-                    .operations
-                    .iter()
-                    .map(|o| o.label())
-                    .collect::<Vec<_>>()
-                    .join("、"),
-            );
-            ui.horizontal(|ui| {
-                if icons::button(ui, Icon::Check, "确认执行一次；Windows 可能要求管理员授权")
-                    .clicked()
-                {
-                    service.start(&config.cleanup, false);
-                    *confirm = false;
-                }
-                if icons::button(ui, Icon::Cancel, "取消本次操作").clicked() {
-                    *confirm = false;
-                }
-            });
+        ui.weak("轻度默认只清 1 项，优先减少对工作的干扰。档位不保证释放容量。");
+        ui.add_space(10.0);
+        let beginning = confirm.operations().is_none()
+            && actions::primary(
+                ui,
+                Icon::Clean,
+                if service.busy() {
+                    "正在处理…"
+                } else {
+                    "清理一次"
+                },
+                !service.busy() && !config.cleanup.operations.is_empty(),
+            )
+            .clicked();
+        if beginning {
+            confirm.begin(&config.cleanup);
+        }
+        if let Some(request) = cleanup_choice::review(ui, confirm, !service.busy()) {
+            service.start(&request, false);
+        }
+        if beginning {
+            ui.scroll_to_cursor(Some(egui::Align::BOTTOM));
         }
         if !service.message.is_empty() {
             ui.add_space(8.0);
             ui.label(service.message.as_str());
         }
+    });
+    section(ui, "高级自定义", |ui| {
+        egui::CollapsingHeader::new("逐项选择全部 8 种操作").show(ui, |ui| {
+            ui.weak("缓存刷新与内存页合并按需选择，不纳入推荐档位。");
+            ui.add_enabled_ui(!service.busy(), |ui| expert(ui, config, confirm));
+        });
     });
     section(ui, "自动规则", |ui| {
         if !service.elevated() {
@@ -146,18 +122,65 @@ pub fn show(
             );
             ui.checkbox(
                 &mut config.cleanup.allow_sensitive_auto,
-                "允许自动清理全部待机页及修改页（可能停顿）",
+                "允许自动执行影响应用或磁盘的清理项（可能停顿）",
             );
         });
-        ui.weak("自动模式使用相同的已选清理项；默认排除全部待机页和修改页。程序运行期间生效，不创建后台服务或绕过 UAC。");
+        let automatic = config.cleanup.selected(true);
+        ui.weak(format!(
+            "自动模式实际执行：{}",
+            if automatic.is_empty() {
+                "无；当前档位需手动执行或明确允许上述操作".into()
+            } else {
+                operation_names(&automatic)
+            }
+        ));
+        ui.weak("自动规则默认关闭；未明确允许时，仅可自动清低优先级待机缓存和合并相同页。程序运行期间生效。");
         ui.add_space(8.0);
         ui.checkbox(
             &mut config.cleanup.hotkey,
             "启用 Ctrl+Alt+C 打开快速清理面板",
         );
-        ui.weak("快捷键和托盘只打开面板；需再点击清扫图标才会执行。完整清理中心另有确认步骤。");
+        ui.weak("快捷键和托盘只打开面板；手动清理均先展示本次操作清单，确认后才会执行。");
     });
     ui.weak("清理不是结束进程，也不能修复驱动内核池泄漏。可用内存的变化受其他正在运行的工作影响。");
+}
+fn expert(ui: &mut egui::Ui, config: &mut Config, confirm: &mut Review) {
+    for op in Operation::ALL {
+        ui.push_id(op, |ui| {
+            let mut enabled = config.cleanup.operations.contains(&op);
+            if ui.checkbox(&mut enabled, op.label()).changed() {
+                confirm.cancel();
+                if enabled {
+                    config.cleanup.operations.push(op);
+                } else {
+                    config.cleanup.operations.retain(|o| *o != op);
+                }
+            }
+            ui.label(
+                RichText::new(op.description())
+                    .size(12.0)
+                    .color(theme::MUTED),
+            );
+            ui.add_space(9.0);
+        });
+    }
+}
+fn memory_tint(config: &Config, load: u32) -> Color32 {
+    let item = panel::DisplayRow {
+        key: "cleanup-memory".into(),
+        label: "内存".into(),
+        reading: Reading::percent(load as f64, "Windows"),
+        row: config
+            .rows
+            .iter()
+            .find(|r| r.metric == Metric::Memory)
+            .cloned()
+            .unwrap_or(Row {
+                metric: Metric::Memory,
+                ..Default::default()
+            }),
+    };
+    panel::tint(panel::level(&item), config.status_colors, theme::ACCENT)
 }
 fn optional(bytes: Option<u64>) -> String {
     bytes
@@ -207,4 +230,34 @@ pub fn history(ui: &mut egui::Ui, service: &CleanupService) {
         );
     }
     ui.weak("保留最近 50 次操作。按本机时间显示，内存变化不等同于各操作的独立收益。");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn cleanup_status_uses_configured_memory_thresholds_and_color_switch() {
+        let mut config = Config::default();
+        let row = config
+            .rows
+            .iter_mut()
+            .find(|r| r.metric == Metric::Memory)
+            .unwrap();
+        row.warning_threshold = 65.0;
+        row.threshold = 82.0;
+        assert_eq!(
+            memory_tint(&config, 64),
+            panel::tint(panel::Level::Green, true, theme::ACCENT)
+        );
+        assert_eq!(
+            memory_tint(&config, 65),
+            panel::tint(panel::Level::Yellow, true, theme::ACCENT)
+        );
+        assert_eq!(
+            memory_tint(&config, 82),
+            panel::tint(panel::Level::Red, true, theme::ACCENT)
+        );
+        config.status_colors = false;
+        assert_eq!(memory_tint(&config, 99), theme::ACCENT);
+    }
 }

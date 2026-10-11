@@ -108,6 +108,7 @@ impl CleanupService {
             if auto
                 && self.elevated()
                 && !self.busy()
+                && !config.selected(true).is_empty()
                 && self
                     .status
                     .as_ref()
@@ -226,5 +227,35 @@ mod tests {
         assert!(!service.busy());
         assert!(calls.borrow().is_empty());
         assert_eq!(service.message, "读数失败");
+    }
+    #[test]
+    fn automatic_cache_profile_waits_for_explicit_sensitive_opt_in() {
+        let calls = Rc::new(RefCell::new(Vec::new()));
+        let mut service = CleanupService::new(
+            Box::new(FakeCleaner {
+                calls: calls.clone(),
+                fail_inspect: false,
+            }),
+            Box::new(FakeHistory(Rc::new(RefCell::new(0)))),
+            Arc::new(|| {}),
+        );
+        let mut config = CleanupConfig {
+            operations: crate::domain::cleanup_profile::Profile::Medium
+                .operations()
+                .to_vec(),
+            auto_interval: true,
+            interval_minutes: 1,
+            ..Default::default()
+        };
+        service.last_attempt = Instant::now() - std::time::Duration::from_secs(600);
+        service.tick(&config, false);
+        assert!(!service.busy());
+        assert!(calls.borrow().is_empty());
+        assert!(service.message.is_empty());
+        config.allow_sensitive_auto = true;
+        service.last_inspect = None;
+        service.tick(&config, false);
+        assert!(service.busy());
+        assert_eq!(calls.borrow().len(), 1);
     }
 }

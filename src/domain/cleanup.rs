@@ -52,7 +52,7 @@ impl Operation {
         1 << Self::ALL.iter().position(|op| *op == self).unwrap()
     }
     pub fn auto_sensitive(self) -> bool {
-        matches!(self, Self::Modified | Self::Standby)
+        !matches!(self, Self::LowStandby | Self::Combine)
     }
 }
 
@@ -184,7 +184,10 @@ mod tests {
         assert!(!config.due(100, 299));
         assert!(config.due(90, 300));
         assert!(!config.due(89, 300));
-        assert_eq!(config.selected(true).len(), 6);
+        assert_eq!(
+            config.selected(true),
+            [Operation::LowStandby, Operation::Combine]
+        );
         assert_eq!(config.selected(false).len(), 8);
         config.allow_sensitive_auto = true;
         assert_eq!(config.selected(true).len(), 8);

@@ -1,4 +1,6 @@
+mod actions;
 mod appearance;
+mod cleanup_choice;
 mod cleanup_page;
 mod controls;
 mod details;
@@ -9,5 +11,6 @@ mod panel;
 mod pet;
 mod pet_motion;
 mod settings;
+mod settings_shell;
 mod theme;
 mod trend;

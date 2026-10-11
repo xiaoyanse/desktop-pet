@@ -1,11 +1,13 @@
 use super::{
+    actions, cleanup_choice,
     icons::{self, Icon},
-    panel,
+    panel, theme,
 };
 use crate::{
     application::cleanup::CleanupService,
     domain::{
-        cleanup::{CleanupConfig, Operation},
+        cleanup::CleanupConfig,
+        cleanup_profile::{Profile, Review},
         config::Config,
         desktop::{DesktopGeometry, flyout_position},
         resources::Snapshot,
@@ -25,6 +27,7 @@ pub struct Flyout {
     pub pinned: bool,
     until: Instant,
     active: bool,
+    review: Review,
 }
 impl Default for Flyout {
     fn default() -> Self {
@@ -32,6 +35,7 @@ impl Default for Flyout {
             pinned: false,
             until: Instant::now(),
             active: false,
+            review: Review::default(),
         }
     }
 }
@@ -88,10 +92,10 @@ impl Flyout {
                 egui::CentralPanel::default()
                     .frame(
                         egui::Frame::new()
-                            .fill(Color32::from_rgb(23, 32, 43))
+                            .fill(theme::BACKGROUND)
                             .corner_radius(12)
                             .inner_margin(16)
-                            .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(62, 91, 107))),
+                            .stroke(egui::Stroke::new(1.0_f32, theme::LINE)),
                     )
                     .show(ctx, |ui| {
                         ui.horizontal(|ui| {
@@ -155,38 +159,44 @@ impl Flyout {
                                 ui.label(RichText::new(help).size(11.0));
                                 ui.add_space(10.0);
                                 egui::Frame::new()
-                                    .fill(Color32::from_rgb(31, 48, 58))
+                                    .fill(theme::SURFACE)
                                     .corner_radius(9)
                                     .inner_margin(10)
                                     .show(ui, |ui| {
-                                        ui.label(RichText::new("快速清理").strong());
+                                        ui.label(RichText::new("轻度清理 · 日常推荐").strong());
                                         ui.weak("只清低优先级待机缓存，不收缩应用工作集。");
-                                        ui.horizontal(|ui| {
-                                            let response = ui
-                                                .add_enabled_ui(!service.busy(), |ui| {
-                                                    icons::bare_button(
-                                                        ui,
-                                                        Icon::Clean,
-                                                        "清理低优先级待机缓存",
-                                                    )
-                                                })
-                                                .inner;
-                                            if response.clicked() {
-                                                service.start(
-                                                    &CleanupConfig {
-                                                        operations: vec![Operation::LowStandby],
-                                                        ..config.cleanup.clone()
-                                                    },
-                                                    false,
-                                                );
-                                                self.pinned = true;
-                                            }
-                                            ui.label(if service.busy() {
-                                                "正在处理…"
-                                            } else {
-                                                "点击清扫图标执行一次"
+                                        ui.add_space(8.0);
+                                        if self.review.operations().is_none()
+                                            && actions::primary(
+                                                ui,
+                                                Icon::Clean,
+                                                if service.busy() {
+                                                    "正在处理…"
+                                                } else {
+                                                    "轻度清理一次"
+                                                },
+                                                !service.busy(),
+                                            )
+                                            .clicked()
+                                        {
+                                            self.review.begin(&CleanupConfig {
+                                                operations: Profile::Light.operations().to_vec(),
+                                                ..Default::default()
                                             });
-                                        });
+                                            self.pinned = true;
+                                        }
+                                        if let Some(request) = cleanup_choice::review(
+                                            ui,
+                                            &mut self.review,
+                                            !service.busy(),
+                                        ) {
+                                            service.start(&request, false);
+                                        }
+                                        ui.add_space(6.0);
+                                        if actions::secondary(ui, "选择中度 / 重度").clicked()
+                                        {
+                                            action = Some(Action::AdvancedClean);
+                                        }
                                         if !service.message.is_empty() {
                                             ui.label(RichText::new(&service.message).size(11.0));
                                         }
@@ -198,6 +208,7 @@ impl Flyout {
             },
         );
         if close || action.is_some() {
+            self.review.cancel();
             self.pinned = false;
             self.until = Instant::now();
             self.active = false;

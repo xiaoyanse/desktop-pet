@@ -18,7 +18,6 @@ pub enum Icon {
     Devices,
     General,
     History,
-    Exit,
     Pet,
 }
 
@@ -135,7 +134,7 @@ pub fn draw(p: &egui::Painter, rect: egui::Rect, icon: Icon, color: Color32) {
             line((0.32, 0.72), (0.32, 0.93));
             line((0.52, 0.72), (0.52, 0.93));
         }
-        Icon::Cancel | Icon::Exit => {
+        Icon::Cancel => {
             line((0.15, 0.15), (0.85, 0.85));
             line((0.85, 0.15), (0.15, 0.85));
         }

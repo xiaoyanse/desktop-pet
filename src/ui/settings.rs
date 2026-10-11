@@ -1,6 +1,7 @@
 use super::{
     cleanup_page,
     icons::{self, Icon},
+    settings_shell, theme,
 };
 use crate::{
     application::Services,
@@ -17,7 +18,7 @@ pub struct Settings {
     pub open: bool,
     editing: Option<Metric>,
     logo: Option<egui::TextureHandle>,
-    confirm_clean: bool,
+    confirm_clean: crate::domain::cleanup_profile::Review,
     pets: super::pet::Sprites,
 }
 impl Settings {
@@ -50,108 +51,23 @@ impl Settings {
             egui::ViewportBuilder::default()
                 .with_title("资源监视器 · 设置")
                 .with_taskbar(true)
-                .with_inner_size([840.0, 740.0])
-                .with_min_inner_size([760.0, 560.0])
+                .with_inner_size([920.0, 780.0])
+                .with_min_inner_size([840.0, 600.0])
                 .with_always_on_top(),
             |ctx, _| {
                 if ctx.input(|i| i.viewport().close_requested()) {
                     closed = true;
                 }
-                egui::SidePanel::left("settings-navigation")
-                    .exact_width(84.0)
-                    .resizable(false)
-                    .frame(
-                        egui::Frame::new()
-                            .fill(Color32::from_rgb(17, 24, 33))
-                            .inner_margin(16),
-                    )
-                    .show(ctx, |ui| {
-                        ui.add_space(5.0);
-                        if let Some(logo) = &self.logo {
-                            ui.add(
-                                egui::Image::new(logo).fit_to_exact_size(egui::vec2(48.0, 48.0)),
-                            );
-                        }
-                        ui.add_space(28.0);
-                        for (index, icon, name) in [
-                            (0, Icon::Monitor, "监测项"),
-                            (1, Icon::Palette, "外观"),
-                            (2, Icon::Devices, "设备"),
-                            (3, Icon::General, "常规"),
-                            (4, Icon::Clean, "内存清理"),
-                            (5, Icon::History, "清理记录"),
-                        ] {
-                            ui.push_id(index, |ui| {
-                                let (rect, response) = ui.allocate_exact_size(
-                                    egui::vec2(50.0, 42.0),
-                                    egui::Sense::click(),
-                                );
-                                if self.tab == index || response.hovered() {
-                                    ui.painter().rect_filled(
-                                        rect,
-                                        9,
-                                        if self.tab == index {
-                                            Color32::from_rgb(29, 73, 76)
-                                        } else {
-                                            Color32::from_rgb(33, 43, 55)
-                                        },
-                                    );
-                                }
-                                icons::draw(
-                                    ui.painter(),
-                                    egui::Rect::from_center_size(
-                                        rect.center(),
-                                        egui::vec2(19.0, 19.0),
-                                    ),
-                                    icon,
-                                    if self.tab == index {
-                                        Color32::from_rgb(122, 230, 213)
-                                    } else {
-                                        Color32::from_rgb(157, 177, 193)
-                                    },
-                                );
-                                response.widget_info(|| {
-                                    egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name)
-                                });
-                                if response.on_hover_text(name).clicked() {
-                                    self.tab = index;
-                                }
-                            });
-                            ui.add_space(10.0);
-                        }
-                    });
+                if let Some(tab) =
+                    settings_shell::navigation(ctx, self.tab, self.logo.as_ref(), config)
+                {
+                    self.confirm_clean.cancel();
+                    self.tab = tab;
+                }
                 egui::CentralPanel::default()
-                    .frame(
-                        egui::Frame::new()
-                            .fill(Color32::from_rgb(21, 29, 39))
-                            .inner_margin(26),
-                    )
+                    .frame(egui::Frame::new().fill(theme::BACKGROUND).inner_margin(28))
                     .show(ctx, |ui| {
-                        let (title, description) = match self.tab {
-                            0 => ("监测项", "选择数据、调整顺序，让桌面只留下你需要的信息。"),
-                            1 => ("外观", "紧凑而清晰的桌面仪表，颜色与透明度由你决定。"),
-                            2 => ("设备", "每块显卡独立显示，磁盘和网络可以指定来源。"),
-                            3 => ("常规", "设置刷新、贴边和启动行为。"),
-                            4 => ("内存清理", "八种清理方式，按需执行；自动规则默认关闭。"),
-                            _ => ("清理记录", "逐项结果与前后内存状态，不把变化当成保证收益。"),
-                        };
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new(title).size(27.0).strong());
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if icons::button(ui, Icon::Exit, "关闭设置").clicked() {
-                                        closed = true;
-                                    }
-                                },
-                            );
-                        });
-                        ui.label(
-                            RichText::new(description)
-                                .size(13.0)
-                                .color(Color32::from_rgb(150, 171, 188)),
-                        );
-                        ui.add_space(24.0);
+                        closed |= settings_shell::header(ui, self.tab, config, snapshot);
                         egui::ScrollArea::vertical()
                             .id_salt(("settings-scroll", self.tab))
                             .auto_shrink([false, false])
@@ -181,18 +97,20 @@ impl Settings {
         );
         if closed {
             self.open = false;
+            self.confirm_clean.cancel();
         }
         before != serde_json::to_string(config).unwrap()
     }
 }
 pub fn section(ui: &mut egui::Ui, title: &str, content: impl FnOnce(&mut egui::Ui)) {
     egui::Frame::new()
-        .fill(Color32::from_rgb(28, 39, 51))
-        .corner_radius(12)
-        .inner_margin(16)
+        .fill(theme::SURFACE)
+        .stroke(egui::Stroke::new(1.0_f32, theme::LINE))
+        .corner_radius(10)
+        .inner_margin(18)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new(title).size(16.0).strong());
+            ui.label(RichText::new(title).size(14.0).strong().color(theme::TEXT));
             ui.add_space(12.0);
             content(ui);
         });
@@ -210,7 +128,7 @@ fn metrics(ui: &mut egui::Ui, config: &mut Config, editing: &mut Option<Metric>)
     for (index, row) in config.rows.iter_mut().enumerate() {
         ui.push_id(row.metric, |ui| {
             egui::Frame::new()
-                .fill(Color32::from_rgb(28, 39, 51))
+                .fill(theme::SURFACE)
                 .corner_radius(8)
                 .inner_margin(10)
                 .show(ui, |ui| {
