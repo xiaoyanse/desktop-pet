@@ -187,7 +187,8 @@
     "pinned-image",
     "notes",
     "todo",
-    "reminder"
+    "reminder",
+    "meeting"
   ],
   "background": {
     "file": "workbench-material-v2.png",

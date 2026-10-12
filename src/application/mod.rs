@@ -1,4 +1,5 @@
 pub mod cleanup;
+pub mod meeting;
 pub mod monitoring;
 pub mod office;
 pub mod report;
@@ -19,6 +20,7 @@ pub struct Dependencies {
     pub screenshot_output: std::sync::Arc<dyn crate::interfaces::ScreenshotOutput>,
     pub office_store: std::sync::Arc<dyn crate::interfaces::OfficeStore>,
     pub local_time: std::sync::Arc<dyn crate::interfaces::LocalTime>,
+    pub microphone: std::sync::Arc<dyn crate::interfaces::MicrophoneSource>,
 }
 
 pub struct Services {
@@ -29,4 +31,5 @@ pub struct Services {
     pub report: report::ReportService,
     pub screenshot: screenshot::ScreenshotService,
     pub office: office::OfficeService,
+    pub meeting: meeting::MeetingService,
 }

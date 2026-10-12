@@ -25,7 +25,11 @@ pub fn rects(group: Group) -> &'static [Rect] {
             [270.0, 140.0, 510.0, 344.0],
             [265.0, 350.0, 510.0, 458.0],
         ],
-        Group::Office => &[[250.0, 133.0, 510.0, 340.0], [270.0, 16.0, 510.0, 124.0]],
+        Group::Office => &[
+            [250.0, 133.0, 510.0, 340.0],
+            [270.0, 16.0, 510.0, 124.0],
+            [270.0, 350.0, 510.0, 458.0],
+        ],
         Group::Tools => &[[270.0, 75.0, 510.0, 250.0], [270.0, 262.0, 510.0, 446.0]],
     }
 }
@@ -57,7 +61,7 @@ pub fn show(
             });
         }
         (Group::Office, 0) => timer(ui, content, action),
-        (Group::Office, _) => {
+        (Group::Office, 1) => {
             ui.label(RichText::new("便签与待办").size(14.0).strong());
             let pending = content
                 .services
@@ -89,6 +93,19 @@ pub fn show(
                     );
                 }
             });
+        }
+        (Group::Office, _) => {
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("会议辅助").size(14.0).strong());
+                ui.label(
+                    RichText::new(clock(content.services.meeting.session.elapsed.as_secs()))
+                        .size(14.0)
+                        .color(theme::ACCENT),
+                );
+            });
+            if actions::secondary(ui, Icon::Meeting, "打开会议辅助").clicked() {
+                *action = Some(Action::Meeting);
+            }
         }
         (Group::Tools, 0) => {
             let (_, r) = ui.allocate_space(egui::vec2(40.0, 40.0));

@@ -9,6 +9,16 @@ use crate::{
     },
 };
 use eframe::egui;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+struct SyntheticMicrophone;
+impl crate::interfaces::MicrophoneSource for SyntheticMicrophone {
+    fn sample(&self) -> Result<crate::domain::meeting::MicrophoneStatus, String> {
+        Err("合成预览禁止查询真实设备".into())
+    }
+}
 pub struct Preview {
     page: Page,
     gallery: super::components::Gallery,
@@ -16,6 +26,7 @@ pub struct Preview {
     editing: Option<Metric>,
     filter: Option<&'static str>,
     stage: usize,
+    meeting: crate::application::meeting::MeetingService,
 }
 impl Preview {
     pub fn new(ctx: &egui::Context, font: FontSource) -> Self {
@@ -28,6 +39,10 @@ impl Preview {
             editing: None,
             filter: None,
             stage: 0,
+            meeting: crate::application::meeting::MeetingService::new(
+                Arc::new(SyntheticMicrophone),
+                Arc::new(|| {}),
+            ),
         }
     }
     pub fn stage(&mut self, stage: usize, service: &OfficeService) {
@@ -37,9 +52,43 @@ impl Preview {
         if stage == 2 {
             self.page.edit_item(2, service);
         }
+        if stage >= 7 {
+            self.meeting.microphone_at = Some(Instant::now());
+            self.meeting.microphone = Some(Ok(crate::domain::meeting::MicrophoneStatus {
+                name: "合成数据 · 会议麦克风".into(),
+                muted: stage == 7,
+                volume: Some(75),
+            }));
+            if stage >= 8 {
+                self.meeting.session.start(&self.config.meeting);
+                self.meeting.session.advance(Duration::from_secs(1860));
+            }
+            if stage == 9 {
+                self.meeting.microphone = Some(Err(
+                    "合成数据 · 没有可用的通信麦克风，请连接设备后刷新。".into(),
+                ));
+            }
+            if stage == 10 {
+                self.meeting
+                    .notices
+                    .push_back(crate::domain::meeting::Notice::Time);
+            }
+        }
     }
     pub fn show(&mut self, ctx: &egui::Context, service: &mut OfficeService) {
-        if self.stage >= 5 {
+        if self.stage == 10 {
+            egui::CentralPanel::default()
+                .frame(crate::ui::common::components::layout::dialog_frame())
+                .show(ctx, |ui| {
+                    crate::ui::work_tools::meeting::notice::panel(
+                        ui,
+                        &mut self.meeting,
+                        crate::domain::meeting::Notice::Time,
+                    );
+                });
+        } else if self.stage >= 7 {
+            crate::ui::settings::meeting_preview(ctx, &mut self.config.meeting, &mut self.meeting);
+        } else if self.stage >= 5 {
             crate::ui::settings::controls_preview(
                 ctx,
                 if self.stage == 5 { 0 } else { 2 },

@@ -20,6 +20,17 @@ use interfaces::{ReportCollector, ResourceSampler, SettingsStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|a| a == "--microphone-probe") {
+        let result = args
+            .get(2)
+            .ok_or("麦克风探针需要新文件的绝对路径".to_string())
+            .and_then(|path| bootstrap::microphone_probe::run(std::path::Path::new(path)));
+        if let Err(error) = result {
+            native::message(&error);
+            std::process::exit(1);
+        }
+        return;
+    }
     if args.get(1).is_some_and(|a| a == "--office-preview") {
         let Some(folder) = args.get(2) else {
             native::message("合成预览需要尚不存在的绝对输出目录");
@@ -167,6 +178,7 @@ fn main() {
             infrastructure::storage::office::LocalOfficeStore::default(),
         ),
         local_time: std::sync::Arc::new(infrastructure::windows::local_time::WindowsLocalTime),
+        microphone: std::sync::Arc::new(infrastructure::windows::microphone::WindowsMicrophone),
     });
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title("桌面资源监视器")

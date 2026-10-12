@@ -31,6 +31,13 @@ pub struct Settings {
     office_page: crate::ui::work_tools::office::Page,
 }
 impl Settings {
+    pub fn meeting_visible(&self) -> bool {
+        self.open && self.tab == 10
+    }
+    pub fn open_meeting(&mut self) {
+        self.tab = 10;
+        self.open = true;
+    }
     pub fn open_cleanup(&mut self) {
         self.tab = 4;
         self.open = true;
@@ -136,6 +143,11 @@ impl Settings {
                                         &mut config.timer,
                                         &mut services.timer,
                                     ),
+                                    10 => crate::ui::work_tools::meeting::show(
+                                        ui,
+                                        &mut config.meeting,
+                                        &mut services.meeting,
+                                    ),
                                     _ => cleanup_page::history(ui, &services.cleaner),
                                 });
                         }
@@ -185,6 +197,18 @@ pub(crate) fn controls_preview(
             } else {
                 pages::devices::show(ui, config, &Snapshot::default());
             }
+        });
+    });
+}
+
+pub(crate) fn meeting_preview(
+    ctx: &egui::Context,
+    config: &mut crate::domain::meeting::MeetingConfig,
+    service: &mut crate::application::meeting::MeetingService,
+) {
+    preview_shell(ctx, 10, |ui| {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            crate::ui::work_tools::meeting::show(ui, config, service)
         });
     });
 }

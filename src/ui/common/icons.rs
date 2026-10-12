@@ -41,6 +41,7 @@ pub enum Icon {
     Todo,
     Reminder,
     Edit,
+    Meeting,
 }
 
 impl Icon {
@@ -79,6 +80,7 @@ impl Icon {
             Self::Todo => "todo",
             Self::Reminder => "reminder",
             Self::Edit => "capture-annotate",
+            Self::Meeting => "meeting",
         }
     }
 }

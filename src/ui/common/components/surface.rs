@@ -54,7 +54,7 @@ pub fn paint(ui: &egui::Ui, response: &egui::Response, role: Role, radius: u8) {
     if enabled && !matches!(role, Role::Quiet) {
         ui.painter().add(glass::finish(
             response.rect.shrink(1.0),
-            (radius - 1) as f32,
+            radius.saturating_sub(1) as f32,
             response.hovered(),
         ));
     }

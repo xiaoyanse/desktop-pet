@@ -3,6 +3,7 @@ pub mod cleanup_profile;
 pub mod companion;
 pub mod config;
 pub mod desktop;
+pub mod meeting;
 pub mod office;
 pub mod report;
 pub mod resources;

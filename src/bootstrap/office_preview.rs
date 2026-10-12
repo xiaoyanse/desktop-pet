@@ -19,6 +19,10 @@ const STAGES: &[&str] = &[
     "components.png",
     "metrics.png",
     "devices.png",
+    "meeting.png",
+    "meeting-overtime.png",
+    "meeting-unavailable.png",
+    "meeting-reminder.png",
 ];
 impl OfficeStore for Memory {
     fn load(&self) -> Result<Book, String> {
@@ -138,7 +142,7 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
-        if self.started.elapsed() > Duration::from_secs(12) {
+        if self.started.elapsed() > Duration::from_secs(20) {
             *self.error.lock().unwrap() = Some("合成预览超时".into());
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
@@ -161,6 +165,10 @@ impl eframe::App for App {
                     } else if self.stage == 4 {
                         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
                             1040.0, 820.0,
+                        )));
+                    } else if self.stage == 10 {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
+                            360.0, 250.0,
                         )));
                     }
                     self.ready = Instant::now() + Duration::from_millis(300);

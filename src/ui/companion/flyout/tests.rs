@@ -102,6 +102,7 @@ impl DesktopSession for Desktop {
 }
 pub(super) fn services() -> Services {
     Services {
+        meeting: crate::application::meeting::tests::fake_service().0,
         office: crate::application::office::tests::fake_service().0,
         screenshot: crate::application::screenshot::tests::fake_service().0,
         settings: Box::new(Memory),
@@ -201,6 +202,7 @@ fn edge_spiral_keeps_rendered_regions_and_action_labels_inside_its_viewport() {
                     "打开设置",
                     "便签",
                     "待办",
+                    "打开会议辅助",
                 ] {
                     for shape in &output.shapes {
                         if let Some(rect) = text_bounds(&shape.shape, label) {

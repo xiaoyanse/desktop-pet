@@ -190,6 +190,7 @@ pub struct Config {
     pub network: String,
     pub cleanup: super::cleanup::CleanupConfig,
     pub timer: super::work_timer::TimerConfig,
+    pub meeting: super::meeting::MeetingConfig,
     pub screenshot_folder: String,
 }
 impl Default for Config {
@@ -246,6 +247,7 @@ impl Default for Config {
             network: String::new(),
             cleanup: super::cleanup::CleanupConfig::default(),
             timer: super::work_timer::TimerConfig::default(),
+            meeting: super::meeting::MeetingConfig::default(),
             screenshot_folder: String::new(),
         }
     }
@@ -315,6 +317,7 @@ impl Config {
         self.version = 3;
         self.cleanup.normalize();
         self.timer.normalize();
+        self.meeting.normalize();
     }
     pub fn enabled(&self, group: &str) -> bool {
         self.rows

@@ -1,5 +1,6 @@
 mod cleanup;
 mod desktop;
+mod meeting;
 mod monitoring;
 mod office;
 mod report;
@@ -8,6 +9,7 @@ mod storage;
 
 pub use cleanup::MemoryCleaner;
 pub use desktop::{DesktopAction, DesktopFactory, DesktopSession, FontSource};
+pub use meeting::MicrophoneSource;
 pub use monitoring::{ResourceSampler, SamplerFactory};
 pub use office::{LocalTime, OfficeStore};
 pub use report::{ReportCollector, ReportStore};

@@ -4,6 +4,7 @@ use super::{
     monitoring::{controls, details, surface},
 };
 mod actions;
+mod meeting;
 mod office;
 mod screenshot;
 pub(crate) use screenshot::restore_root as restore_screenshot_root;
@@ -78,6 +79,10 @@ impl MonitorApp {
             .unwrap_or(0);
         let wake: crate::interfaces::Wake = Arc::new(move || ctx.request_repaint());
         let mut services = Services {
+            meeting: crate::application::meeting::MeetingService::new(
+                dependencies.microphone,
+                wake.clone(),
+            ),
             office: crate::application::office::OfficeService::new(
                 dependencies.office_store,
                 dependencies.local_time,
@@ -355,12 +360,14 @@ impl eframe::App for MonitorApp {
         self.services.timer.tick(Instant::now());
         self.services.report.tick();
         self.office_tick(ctx);
+        self.meeting_tick(ctx);
         if self.screenshot_tick(ctx) {
             return;
         }
         self.card(ctx);
         self.timer_feedback(ctx);
         let office_notice = self.office_feedback(ctx);
+        let meeting_notice = self.meeting_feedback(ctx);
         self.flyout.settings_closed(self.settings.open);
         if std::mem::take(&mut self.settings.preview_quick) {
             self.flyout.open_preview();
@@ -393,6 +400,7 @@ impl eframe::App for MonitorApp {
             Some(flyout::Action::Settings) => self.settings.open = true,
             Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
             Some(flyout::Action::Timer) => self.settings.open_timer(),
+            Some(flyout::Action::Meeting) => self.settings.open_meeting(),
             Some(flyout::Action::Report) => self.settings.open_report(),
             Some(flyout::Action::Screenshot) => self.settings.open_screenshot(),
             Some(flyout::Action::Notes) => {
@@ -419,6 +427,7 @@ impl eframe::App for MonitorApp {
             || self.settings.open
             || self.services.screenshot.pinned.is_some()
             || office_notice
+            || meeting_notice
         {
             self.services.desktop.configure_auxiliary();
         }

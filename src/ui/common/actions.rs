@@ -26,6 +26,7 @@ fn primary_role(
             .frame(false)
             .min_size(egui::vec2(ui.available_width(), 48.0)),
     );
+    let enabled = response.enabled();
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
     surface::paint(ui, &response, role, theme::CONTROL_RADIUS);
     let foreground = surface::foreground(&response);
@@ -59,7 +60,7 @@ pub fn secondary(ui: &mut egui::Ui, icon: Icon, label: &str) -> egui::Response {
         if ui.is_enabled() {
             theme::TEXT
         } else {
-            theme::MUTED
+            theme::DISABLED_TEXT
         },
     );
     let width = (text.size().x + 50.0).max(110.0).min(ui.available_width());
@@ -96,6 +97,52 @@ pub fn secondary(ui: &mut egui::Ui, icon: Icon, label: &str) -> egui::Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn disabled_parent_dims_primary_label_and_artwork_together() {
+        let ctx = egui::Context::default();
+        theme::setup(&ctx);
+        let out = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.add_enabled_ui(false, |ui| {
+                    assert!(!primary(ui, Icon::Save, "保存", true).enabled());
+                    icons::draw(
+                        ui.painter(),
+                        egui::Rect::from_min_size(egui::pos2(10.0, 80.0), egui::Vec2::splat(28.0)),
+                        Icon::Save,
+                        Color32::from_white_alpha(75),
+                    );
+                });
+            });
+        });
+        let label = out
+            .shapes
+            .iter()
+            .find_map(|s| match &s.shape {
+                egui::Shape::Text(t) if t.galley.text() == "保存" => Some(t),
+                _ => None,
+            })
+            .expect("disabled label visible");
+        assert_eq!(
+            label.galley.job.sections[0].format.color,
+            theme::DISABLED_TEXT
+        );
+        let texture = super::super::artwork::texture(&ctx, Icon::Save.asset()).id();
+        let colors: Vec<_> = out
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::Mesh(mesh) if mesh.texture_id == texture => {
+                    Some(mesh.vertices.iter().map(|v| v.color).collect::<Vec<_>>())
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(colors.len(), 2);
+        assert_eq!(
+            colors[0], colors[1],
+            "disabled parent must use the disabled icon tint"
+        );
+    }
     #[test]
     fn primary_is_full_width_large_and_disabled_does_not_click() {
         for enabled in [false, true] {

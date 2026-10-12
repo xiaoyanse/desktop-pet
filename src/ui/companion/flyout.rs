@@ -28,6 +28,7 @@ pub enum Action {
     Screenshot,
     Notes,
     Tasks,
+    Meeting,
 }
 pub struct Flyout {
     pub pinned: bool,

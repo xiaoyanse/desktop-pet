@@ -1,5 +1,7 @@
 # 分层架构与扩展约定
 
+阶段二十增加`domain/meeting`、`application/meeting`、`interfaces/meeting`及Windows只读`microphone`适配器；UI放`work_tools/meeting`，主窗口调度放`monitor/meeting`。会话与通知有界，最多一个短期查询任务，默认未打开页面/未开始会议不创建任务。新增Windows0.62.2已有依赖的Core Audio/COM特性，无新包、后台服务或音频采集流。只读端点探针从bootstrap显式进入，不启动普通实例或写用户配置。会议配置带默认值，旧版配置可缺省读取；运行会话不持久化。
+
 阶段十九增加 `domain/office`、`application/office`、`interfaces/office`、`infrastructure/storage/office` 和 `windows/local_time`，遵循原有依赖方向。办公列表/编辑/提醒放在 `ui/work_tools/office`，不继续平铺在UI根目录。共用基础组件进一步归组到 `ui/common/components/{surface,fields,selection,status,layout}`；既有actions/icons/widgets复用该层，业务页面不再各自实现皮肤。设计契约见《基础组件设计》，存储与提醒边界见《便签与待办》。开发合成预览由bootstrap装配内存数据并读取自有渲染缓冲，UI侧只绘制生产组件，不放宽禁止UI读磁盘/调用系统API的规则。
 
 ## 边界
