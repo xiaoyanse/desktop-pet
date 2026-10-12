@@ -4,6 +4,7 @@ pub mod monitor;
 mod monitoring;
 mod settings;
 mod work_tools;
+pub(crate) use common::fonts::configure_atlas as configure_framework_atlas;
 #[cfg(test)]
 pub(crate) use common::fonts::definitions as test_font_definitions;
 #[cfg(test)]

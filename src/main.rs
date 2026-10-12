@@ -97,12 +97,17 @@ fn main() {
     } else {
         None
     };
+    let renderer_baseline = args.iter().any(|a| a == "--renderer-baseline");
+    if renderer_baseline && resource_probe.is_none() {
+        native::message("渲染基线仅用于开发取证，必须显式提供 --ui-resource-probe 输出文件");
+        return;
+    }
     let Some(_instance) = native::single_instance(open_settings) else {
         return;
     };
     let (config, warning) = JsonSettings.load();
     let snapping = config.snap_edges;
-    let dependencies = application::Dependencies {
+    let dependencies = (!renderer_baseline).then(|| application::Dependencies {
         sampler: Box::new(|| Box::new(Sampler::new())),
         settings: Box::new(JsonSettings),
         cleaner: Box::new(cleanup::WindowsCleaner),
@@ -113,7 +118,7 @@ fn main() {
             infrastructure::windows::report::WindowsReportCollector,
         ),
         report_store: std::sync::Arc::new(infrastructure::storage::reports::LocalReports),
-    };
+    });
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title("桌面资源监视器")
         .with_decorations(false)
@@ -144,7 +149,18 @@ fn main() {
             if let Some(path) = resource_probe {
                 bootstrap::resource_probe::install(&cc.egui_ctx, &path, cc.gl.as_deref())?;
             }
-            let mut app = ui::monitor::MonitorApp::new(cc, config, warning, dependencies);
+            if renderer_baseline {
+                return Ok(Box::new(bootstrap::render_baseline::RenderBaseline::new(
+                    &cc.egui_ctx,
+                    open_settings,
+                )));
+            }
+            let mut app = ui::monitor::MonitorApp::new(
+                cc,
+                config,
+                warning,
+                dependencies.expect("普通启动必须装配应用依赖"),
+            );
             if open_settings {
                 app.open_settings();
             }
