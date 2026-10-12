@@ -97,7 +97,9 @@ pub fn checkbox(ui: &mut egui::Ui, value: &mut bool, label: &str) -> egui::Respo
         7,
         egui::Stroke::new(
             1.0_f32,
-            if response.has_focus() || response.hovered() || *value {
+            if !response.enabled() {
+                theme::LINE.gamma_multiply(0.45)
+            } else if response.has_focus() || response.hovered() || *value {
                 theme::ACCENT
             } else {
                 theme::LINE

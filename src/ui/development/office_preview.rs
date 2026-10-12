@@ -22,6 +22,9 @@ impl crate::interfaces::MicrophoneSource for SyntheticMicrophone {
 pub struct Preview {
     page: Page,
     gallery: super::components::Gallery,
+    states: super::component_states::States,
+    screenshot: super::screenshot_preview::Preview,
+    pets: crate::ui::companion::pet::Sprites,
     config: Config,
     editing: Option<Metric>,
     filter: Option<&'static str>,
@@ -35,6 +38,9 @@ impl Preview {
         Self {
             page: Page::default(),
             gallery: super::components::Gallery::default(),
+            states: super::component_states::States::default(),
+            screenshot: super::screenshot_preview::Preview::default(),
+            pets: Default::default(),
             config: Config::default(),
             editing: None,
             filter: None,
@@ -76,7 +82,17 @@ impl Preview {
         }
     }
     pub fn show(&mut self, ctx: &egui::Context, service: &mut OfficeService) {
-        if self.stage == 11 {
+        if self.stage == 15 {
+            self.screenshot.show(ctx);
+        } else if self.stage == 14 {
+            crate::ui::settings::appearance_components_preview(
+                ctx,
+                &mut self.config,
+                &mut self.pets,
+            );
+        } else if self.stage >= 12 {
+            self.states.show(ctx, self.stage == 13);
+        } else if self.stage == 11 {
             super::control_icons::show(ctx);
         } else if self.stage == 10 {
             egui::CentralPanel::default()

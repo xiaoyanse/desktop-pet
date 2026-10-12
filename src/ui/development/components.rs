@@ -1,7 +1,7 @@
 use crate::ui::common::{
     actions,
     components::{
-        fields, selection,
+        color, fields, selection,
         status::{self, Tone},
     },
     icons::{self, Icon},
@@ -18,6 +18,7 @@ pub struct Gallery {
     threshold: f64,
     device: String,
     selected: usize,
+    color: [u8; 3],
 }
 impl Default for Gallery {
     fn default() -> Self {
@@ -30,6 +31,7 @@ impl Default for Gallery {
             threshold: 85.0,
             device: "自动选择已连接的设备".into(),
             selected: 0,
+            color: [165, 213, 200],
         }
     }
 }
@@ -103,6 +105,11 @@ impl Gallery {
                         });
                         ui.add_space(8.0);
                         widgets::number(ui, "内存提醒阈值", &mut self.threshold, 50.0..=99.0, "%");
+                        ui.add_space(8.0);
+                        ui.horizontal(|ui| {
+                            ui.label("监测主题色");
+                            color::picker(ui, &mut self.color);
+                        });
                     });
                     theme::glass_panel(&mut columns[1], |ui| {
                         heading(ui, "操作与反馈", "主次清晰，状态不依赖颜色辨认");

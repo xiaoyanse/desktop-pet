@@ -1,6 +1,6 @@
 use crate::domain::{config::Config, resources::Snapshot};
 use crate::ui::{
-    common::{actions, artwork, glass, icons::Icon, theme, widgets},
+    common::{actions, artwork, components::color, glass, icons::Icon, theme, widgets},
     companion::pet::Sprites,
 };
 use eframe::egui::{self, Color32, RichText};
@@ -94,7 +94,7 @@ fn options(ui: &mut egui::Ui, config: &mut Config, pets: &mut Sprites) {
     });
     section(ui, "主题色", |ui| {
         ui.horizontal(|ui| {
-            ui.color_edit_button_srgb(&mut config.color);
+            color::picker(ui, &mut config.color);
             ui.label("监测指标的主题色");
         });
         ui.add_space(12.0);
@@ -105,21 +105,7 @@ fn options(ui: &mut egui::Ui, config: &mut Config, pets: &mut Sprites) {
                 ("暖橙", [245, 178, 106]),
                 ("浅紫", [185, 162, 245]),
             ] {
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::vec2(34.0, 30.0), egui::Sense::click());
-                ui.painter().circle_filled(
-                    rect.center(),
-                    11.0,
-                    Color32::from_rgb(color[0], color[1], color[2]),
-                );
-                if config.color == color {
-                    ui.painter().circle_stroke(
-                        rect.center(),
-                        14.0,
-                        egui::Stroke::new(1.0_f32, Color32::WHITE),
-                    );
-                }
-                if response.on_hover_text(name).clicked() {
+                if color::swatch(ui, color, config.color == color, name).clicked() {
                     config.color = color;
                 }
             }

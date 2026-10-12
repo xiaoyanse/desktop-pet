@@ -24,6 +24,10 @@ const STAGES: &[&str] = &[
     "meeting-unavailable.png",
     "meeting-reminder.png",
     "control-icons.png",
+    "component-states.png",
+    "color-picker.png",
+    "appearance.png",
+    "screenshot-toolbar.png",
 ];
 impl OfficeStore for Memory {
     fn load(&self) -> Result<Book, String> {

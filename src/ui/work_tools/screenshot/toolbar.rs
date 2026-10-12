@@ -4,7 +4,10 @@ use crate::{
     domain::screenshot::Tool,
     ui::common::{
         actions,
-        components::surface::{self, Role},
+        components::{
+            color, numeric,
+            surface::{self, Role},
+        },
         icons::{self, Icon},
         theme,
     },
@@ -24,9 +27,12 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, service: &mut ScreenshotService)
                 }
             }
             ui.separator();
-            ui.color_edit_button_srgb(&mut page.color);
+            color::picker(ui, &mut page.color);
             ui.label("笔宽");
-            ui.add(egui::Slider::new(&mut page.width, 1..=24).suffix(" px"));
+            let mut width = page.width as f64;
+            if numeric::compact(ui, &mut width, 1.0..=24.0, " px") {
+                page.width = width as u32;
+            }
             if let Some(document) = service.document.as_mut() {
                 ui.add_enabled_ui(document.can_undo(), |ui| {
                     if icons::button(ui, Icon::Restore, "撤销 · Ctrl+Z").clicked() {
@@ -82,8 +88,14 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, service: &mut ScreenshotService)
 }
 fn tool_button(ui: &mut egui::Ui, tool: Tool, selected: bool) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(egui::vec2(36.0, 36.0), egui::Sense::click());
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tool.label()));
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(
+            egui::WidgetType::SelectableLabel,
+            response.enabled(),
+            selected,
+            tool.label(),
+        )
+    });
     surface::paint(
         ui,
         &response,
@@ -97,7 +109,9 @@ fn tool_button(ui: &mut egui::Ui, tool: Tool, selected: bool) -> egui::Response 
     let r = rect.shrink(9.0);
     let stroke = egui::Stroke::new(
         2.0_f32,
-        if selected {
+        if !response.enabled() {
+            theme::DISABLED_TEXT
+        } else if selected {
             theme::ACCENT
         } else {
             Color32::WHITE

@@ -225,3 +225,23 @@ fn preview_shell(ctx: &egui::Context, tab: usize, contents: impl FnOnce(&mut egu
             contents(ui);
         });
 }
+
+pub(crate) fn appearance_components_preview(
+    ctx: &egui::Context,
+    config: &mut Config,
+    pets: &mut pet::Sprites,
+) {
+    preview_shell(ctx, 1, |ui| {
+        pages::appearance::show(ui, config, pets, &Snapshot::default());
+    });
+}
+
+pub(crate) fn screenshot_preview(
+    ctx: &egui::Context,
+    page: &mut crate::ui::work_tools::screenshot::Page,
+    service: &mut crate::application::screenshot::ScreenshotService,
+) {
+    preview_shell(ctx, 8, |ui| {
+        egui::ScrollArea::vertical().show(ui, |ui| page.show(ui, service));
+    });
+}

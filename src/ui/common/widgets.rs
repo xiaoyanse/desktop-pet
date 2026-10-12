@@ -1,9 +1,8 @@
 use super::{
-    components::selection,
-    icons::{self, Icon},
+    components::{numeric, selection},
     theme,
 };
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, Color32};
 use std::ops::RangeInclusive;
 
 pub fn switch(ui: &mut egui::Ui, value: &mut bool, label: &str) -> egui::Response {
@@ -84,54 +83,7 @@ pub fn number(
     range: RangeInclusive<f64>,
     unit: &str,
 ) -> bool {
-    let mut changed = false;
-    ui.push_id(label, |ui| {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(label).size(13.0));
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let plus = ui
-                    .add_enabled_ui(*value < *range.end(), |ui| {
-                        icons::sized_button(ui, Icon::Plus, "增加 1", 30.0)
-                    })
-                    .inner
-                    .on_hover_text("增加 1");
-                if plus.clicked() {
-                    *value = (*value + 1.0).min(*range.end());
-                    changed = true;
-                }
-                changed |= ui
-                    .add(
-                        egui::DragValue::new(value)
-                            .range(range.clone())
-                            .speed(1.0)
-                            .fixed_decimals(0)
-                            .suffix(unit),
-                    )
-                    .changed();
-                let minus = ui
-                    .add_enabled_ui(*value > *range.start(), |ui| {
-                        icons::sized_button(ui, Icon::Minus, "减少 1", 30.0)
-                    })
-                    .inner
-                    .on_hover_text("减少 1");
-                if minus.clicked() {
-                    *value = (*value - 1.0).max(*range.start());
-                    changed = true;
-                }
-            });
-        });
-        ui.scope(|ui| {
-            ui.spacing_mut().slider_width = ui.available_width();
-            changed |= ui
-                .add(
-                    egui::Slider::new(value, range)
-                        .show_value(false)
-                        .step_by(1.0),
-                )
-                .changed();
-        });
-    });
-    changed
+    numeric::number(ui, label, value, range, unit)
 }
 
 pub fn integer(
@@ -162,6 +114,7 @@ pub fn tab(ui: &mut egui::Ui, label: &str, selected: bool, width: f32) -> egui::
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::common::icons::Icon;
 
     fn number_frame(
         ctx: &egui::Context,

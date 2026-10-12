@@ -1,5 +1,7 @@
 # 分层架构与扩展约定
 
+阶段二十二在ui/common/components加入numeric及color，各自测试归对应子目录；widgets沿用调用入口但共享数值组合，外观/截图使用同一配色面板。theme统一打开菜单、非交互面层及弹出阴影；没有新依赖、生产线程、配置字段或额外纹理。ui/development增加状态与合成批注预览，只从显式bootstrap预览进入，假后端拒绝桌面/剪贴板/保存调用。本轮E盘独立候选验证不包含保留的剪贴板半成品，见《组件体系补齐与验收》。
+
 阶段二十一仅更新静态控制图与构建切片清单；isolate_names允许同一atlas仅指定一张启用既有连通主体过滤，不改变运行接口。控制图标画廊放ui/development，通过显式自有窗口预览使用生产素材和状态，不进入普通设置导航、资源采样或后台线程。PNG只在构建期解码；运行目录数量/原始RGBA预算不变。
 
 阶段二十增加`domain/meeting`、`application/meeting`、`interfaces/meeting`及Windows只读`microphone`适配器；UI放`work_tools/meeting`，主窗口调度放`monitor/meeting`。会话与通知有界，最多一个短期查询任务，默认未打开页面/未开始会议不创建任务。新增Windows0.62.2已有依赖的Core Audio/COM特性，无新包、后台服务或音频采集流。只读端点探针从bootstrap显式进入，不启动普通实例或写用户配置。会议配置带默认值，旧版配置可缺省读取；运行会话不持久化。
