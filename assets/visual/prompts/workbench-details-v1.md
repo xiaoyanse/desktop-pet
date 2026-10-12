@@ -1,0 +1,7 @@
+# 工作台细节图集 v1
+
+用途：品牌玻璃星球与三种桌面视图的材质缩略图。使用内置 image_gen；文字、数据和交互仍由 Rust 绘制，不烘焙在图中。
+
+完整提示词：
+
+Create one production UI asset atlas for a premium Windows desktop companion, matching a smoky blue glass workbench with warm champagne accents. Exactly 2 columns by 2 rows on a truly transparent background. Equal square cells, generous transparent padding in each cell; no text, no labels, no UI buttons, no watermark. Top left: a single luminous pearl-blue glass planet with a fine champagne orbital ring, three-dimensional translucent sphere, upper-left studio lighting, elegant and restrained, centered isolated logo. Top right: a rounded rectangular miniature surface with folded dark navy satin dunes, sophisticated subtle grain, premium material thumbnail. Bottom left: a rounded rectangular miniature surface of frosted smoky blue glass with softly blurred luminous sculptural curves, pale champagne edge highlights. Bottom right: a rounded rectangular miniature surface showing misty blue alpine mountains reflected on a still lake, soft cinematic light. Each of the three surface thumbnails has the same 1.7:1 landscape aspect ratio, centered in its square cell, with perfectly rounded corners and clean transparent exterior. The logo and material thumbnails must remain clearly readable at small display sizes, not busy, not neon, no hard shadows outside their cells. Assets only: no complete app screen, no cat, no charts, no fake numbers. Atlas cell grid 2x2 is exact; do not let any object cross cell boundaries. Generate high quality antialiased alpha edges.

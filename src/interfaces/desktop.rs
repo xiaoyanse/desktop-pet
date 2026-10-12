@@ -27,6 +27,7 @@ pub trait DesktopSession {
     fn geometry(&self) -> Option<DesktopGeometry>;
     fn cursor(&self) -> Option<[f32; 2]>;
     fn configure_auxiliary(&self);
+    fn quick_regions(&self, regions: &[[f32; 4]], preview: bool) -> Result<(), String>;
     fn warning(&self) -> Option<String> {
         None
     }

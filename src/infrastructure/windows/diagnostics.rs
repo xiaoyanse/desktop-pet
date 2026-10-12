@@ -48,6 +48,21 @@ pub fn inspect(path: &std::path::Path) -> Result<(), String> {
             }
             let style = GetWindowLongPtrW(window, GWL_EXSTYLE) as u32;
             let frame_style = GetWindowLongPtrW(window, GWL_STYLE) as u32;
+            let region = CreateRectRgn(0, 0, 0, 0);
+            let region_type = if region.is_null() {
+                ERROR
+            } else {
+                GetWindowRgn(window, region)
+            };
+            let gap_in_region = if region_type != ERROR {
+                let scale = GetDpiForWindow(window).max(96) as f32 / 96.0;
+                Some(PtInRegion(region, (260.0 * scale) as i32, (430.0 * scale) as i32) != 0)
+            } else {
+                None
+            };
+            if !region.is_null() {
+                DeleteObject(region);
+            }
             let mut bounds = RECT::default();
             GetWindowRect(window, &mut bounds);
             let mut client = RECT::default();
@@ -70,6 +85,7 @@ pub fn inspect(path: &std::path::Path) -> Result<(), String> {
                     "nonClientInsets":insets,
                     "maximized":IsZoomed(window) != 0,"minimized":IsIconic(window) != 0,
                     "active":GetForegroundWindow() == window,
+                    "regionType":region_type,"gapProbeInside":gap_in_region,
                     "rect":[bounds.left,bounds.top,bounds.right,bounds.bottom]}),
             )
         };
@@ -80,7 +96,7 @@ pub fn inspect(path: &std::path::Path) -> Result<(), String> {
             "layered": style & WS_EX_LAYERED != 0,
             "toolWindow": style & WS_EX_TOOLWINDOW != 0, "appWindow": style & WS_EX_APPWINDOW != 0,
             "settings": auxiliary("资源监视器 · 设置"), "flyout": auxiliary("资源助手 · 快捷操作"),
-            "timerReminder": auxiliary("资源助手 · 计时提醒") });
+            "timerReminder": auxiliary("资源助手 · 计时提醒"),"quickPreview":auxiliary("资源监视器 · 快捷入口试用") });
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }

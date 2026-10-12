@@ -19,6 +19,7 @@ use shell::{backdrop, navigation, window_chrome};
 pub struct Settings {
     tab: usize,
     pub open: bool,
+    pub preview_quick: bool,
     editing: Option<Metric>,
     metric_filter: Option<&'static str>,
     confirm_clean: crate::domain::cleanup_profile::Review,
@@ -80,7 +81,8 @@ impl Settings {
                             ui.add_space(12.0);
                         }
                         if self.tab == 1 {
-                            pages::appearance::show(ui, config, &mut self.pets, snapshot);
+                            self.preview_quick |=
+                                pages::appearance::show(ui, config, &mut self.pets, snapshot);
                         } else if self.tab == 4 {
                             cleanup_page::show(
                                 ui,

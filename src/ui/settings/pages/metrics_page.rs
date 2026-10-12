@@ -124,7 +124,8 @@ fn list(
                 &mut row.enabled,
                 row.metric.label(),
             );
-            widgets::switch(&mut cell(ui, rect, &widths, 1), &mut row.trend, "趋势");
+            widgets::switch(&mut cell(ui, rect, &widths, 1), &mut row.trend, "")
+                .on_hover_text(format!("{}的最近一分钟趋势", row.metric.label()));
             if row.metric.color_supported() {
                 let mut controls = cell(ui, rect, &widths, 2);
                 controls.label(

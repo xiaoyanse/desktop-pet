@@ -369,6 +369,10 @@ impl eframe::App for MonitorApp {
         self.services.timer.tick(Instant::now());
         self.card(ctx);
         self.timer_feedback(ctx);
+        self.flyout.settings_closed(self.settings.open);
+        if std::mem::take(&mut self.settings.preview_quick) {
+            self.flyout.open_preview();
+        }
         let trigger = self.pet_hover || self.hover_quick;
         let geometry = if trigger || self.flyout.active() || self.flyout.pinned {
             self.services.desktop.geometry()
@@ -398,6 +402,9 @@ impl eframe::App for MonitorApp {
             Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
             Some(flyout::Action::Timer) => self.settings.open_timer(),
             None => {}
+        }
+        if let Some(warning) = self.flyout.warning.take() {
+            self.message = warning;
         }
         let previous = self.config.clone();
         let settings_changed = self.settings.show(

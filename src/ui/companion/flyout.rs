@@ -1,25 +1,21 @@
-use crate::ui::{
-    common::{
-        actions, cleanup_choice,
-        icons::{self, Icon},
-        theme,
-    },
-    monitoring::panel,
-};
+mod components;
+mod render;
+#[cfg(test)]
+mod tests;
 use crate::{
     application::Services,
     domain::{
-        cleanup::CleanupConfig,
-        cleanup_profile::{Profile, Review},
+        cleanup_profile::Review,
+        companion::spiral::{Group, Layout, MenuState},
         config::Config,
-        desktop::{DesktopGeometry, flyout_position},
+        desktop::DesktopGeometry,
         resources::Snapshot,
     },
 };
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui;
 use std::time::{Duration, Instant};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
     Restore,
     Compact,
@@ -29,26 +25,49 @@ pub enum Action {
 }
 pub struct Flyout {
     pub pinned: bool,
-    until: Instant,
-    active: bool,
+    pub warning: Option<String>,
+    state: MenuState,
     review: Review,
+    started: Instant,
+    preview: bool,
+    last_regions: Vec<[f32; 4]>,
 }
 impl Default for Flyout {
     fn default() -> Self {
         Self {
             pinned: false,
-            until: Instant::now(),
-            active: false,
+            warning: None,
+            state: MenuState::default(),
             review: Review::default(),
+            started: Instant::now(),
+            preview: false,
+            last_regions: Vec::new(),
         }
     }
 }
 impl Flyout {
     pub fn open(&mut self) {
         self.pinned = true;
+        self.state.open(self.started.elapsed());
+        self.state
+            .hover(self.started.elapsed(), Some(Group::Resources), true);
+    }
+    pub fn open_preview(&mut self) {
+        self.preview = true;
+        self.pinned = true;
+        self.state.open(self.started.elapsed());
     }
     pub fn active(&self) -> bool {
-        self.active
+        self.state.active
+    }
+    pub fn settings_closed(&mut self, open: bool) {
+        if self.preview && !open {
+            self.state.close();
+            self.pinned = false;
+            self.preview = false;
+            self.last_regions.clear();
+            self.review.cancel();
+        }
     }
     pub fn show(
         &mut self,
@@ -59,190 +78,110 @@ impl Flyout {
         services: &mut Services,
         trigger: bool,
     ) -> Option<Action> {
-        let (service, timer) = (&mut services.cleaner, &services.timer);
-        if trigger {
-            self.until = Instant::now() + Duration::from_millis(500);
-        }
-        self.active = self.pinned || Instant::now() < self.until;
-        if !self.active {
+        let now = self.started.elapsed();
+        let geometry = geometry?;
+        let layout = Layout::new(geometry);
+        let screen_cursor = services
+            .desktop
+            .cursor()
+            .map(|p| [p[0] + geometry.frame[0], p[1] + geometry.frame[1]]);
+        let inside =
+            screen_cursor.is_some_and(|p| self.last_regions.iter().any(|r| layout.contains(p, *r)));
+        self.state.update(
+            now,
+            trigger && !self.preview,
+            inside,
+            self.pinned || self.review.operations().is_some(),
+        );
+        if !self.state.active {
+            self.review.cancel();
+            self.last_regions.clear();
             return None;
         }
-        let geometry = geometry?;
-        let size = [
-            300.0_f32.min(geometry.work_area[2] - geometry.work_area[0]),
-            360.0_f32.min(geometry.work_area[3] - geometry.work_area[1]),
-        ];
-        let position = flyout_position(geometry, size);
-        let mut action = None;
-        let mut close = false;
+        if self.review.operations().is_none() {
+            let hovered = screen_cursor.and_then(|p| {
+                Group::ALL.into_iter().find(|g| {
+                    layout.contains(
+                        p,
+                        layout.group(
+                            *g,
+                            now.saturating_sub(self.state.opened),
+                            config.pet_animation,
+                        ),
+                    )
+                })
+            });
+            self.state.hover(now, hovered, false);
+        }
+        let preview = self.preview;
+        let mut output = render::Output::default();
         ctx.show_viewport_immediate(
-            egui::ViewportId::from_hash_of("resource-flyout"),
+            egui::ViewportId::from_hash_of(if preview {
+                "spiral-preview"
+            } else {
+                "resource-flyout"
+            }),
             egui::ViewportBuilder::default()
-                .with_title("资源助手 · 快捷操作")
+                .with_title(if preview {
+                    "资源监视器 · 快捷入口试用"
+                } else {
+                    "资源助手 · 快捷操作"
+                })
                 .with_decorations(false)
-                .with_taskbar(false)
+                .with_taskbar(preview)
                 .with_active(false)
                 .with_transparent(true)
                 .with_always_on_top()
                 .with_resizable(false)
-                .with_inner_size(size)
-                .with_position(position),
+                .with_inner_size(layout.size)
+                .with_position(layout.position),
             |ctx, _| {
-                if ctx.input(|i| i.pointer.hover_pos().is_some()) {
-                    self.until = Instant::now() + Duration::from_millis(500);
-                }
-                if ctx.input(|i| i.viewport().close_requested()) {
-                    close = true;
+                if ctx.input(|i| i.viewport().close_requested() || i.key_pressed(egui::Key::Escape))
+                {
+                    output.close = true;
                 }
                 egui::CentralPanel::default()
-                    .frame(
-                        egui::Frame::new()
-                            .fill(theme::BACKGROUND)
-                            .corner_radius(12)
-                            .inner_margin(16)
-                            .stroke(egui::Stroke::new(1.0_f32, theme::LINE)),
-                    )
+                    .frame(egui::Frame::NONE)
                     .show(ctx, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("资源助手").size(18.0).strong());
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if icons::bare_button(ui, Icon::Cancel, "收起快捷面板")
-                                        .clicked()
-                                    {
-                                        close = true;
-                                    }
-                                },
-                            );
-                        });
-                        egui::ScrollArea::vertical()
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| {
-                                let rows = panel::rows(config, snapshot);
-                                for row in rows.iter().take(5) {
-                                    ui.horizontal(|ui| {
-                                        ui.weak(&row.label);
-                                        ui.with_layout(
-                                            egui::Layout::right_to_left(egui::Align::Center),
-                                            |ui| {
-                                                ui.colored_label(
-                                                    panel::tint(
-                                                        panel::level(row),
-                                                        config.status_colors,
-                                                        Color32::from_rgb(100, 210, 195),
-                                                    ),
-                                                    &row.reading.text,
-                                                );
-                                            },
-                                        );
-                                    });
-                                }
-                                if rows.is_empty() {
-                                    ui.weak("在设置中选择需要显示的监测项。");
-                                }
-                                ui.add_space(10.0);
-                                ui.horizontal(|ui| {
-                                    let state = &timer.session;
-                                    let label =
-                                        if state.state == crate::domain::work_timer::State::Idle {
-                                            "工作计时 · 开始你的节奏".to_owned()
-                                        } else {
-                                            format!(
-                                                "{} · {}",
-                                                state.mode.map_or("计时", |m| m.label()),
-                                                crate::domain::work_timer::clock(
-                                                    state.displayed_seconds()
-                                                )
-                                            )
-                                        };
-                                    if actions::secondary(ui, Icon::Timer, &label).clicked() {
-                                        action = Some(Action::Timer);
-                                    }
-                                });
-                                if timer.notice {
-                                    ui.colored_label(theme::ACCENT, "计时已到，请休息或查看计时");
-                                }
-                                ui.add_space(10.0);
-                                ui.separator();
-                                ui.add_space(6.0);
-                                let mut help = "完整视图 · 精简视图 · 设置 · 清理中心";
-                                ui.horizontal(|ui| {
-                                    for (icon, label, target) in [
-                                        (Icon::Restore, "恢复完整视图", Action::Restore),
-                                        (Icon::Compact, "切换精简视图", Action::Compact),
-                                        (Icon::Settings, "打开设置", Action::Settings),
-                                        (Icon::General, "打开完整清理中心", Action::AdvancedClean),
-                                    ] {
-                                        let response = icons::bare_button(ui, icon, label);
-                                        if response.hovered() {
-                                            help = label;
-                                        }
-                                        if response.clicked() {
-                                            action = Some(target);
-                                        }
-                                    }
-                                });
-                                ui.label(RichText::new(help).size(11.0));
-                                ui.add_space(10.0);
-                                egui::Frame::new()
-                                    .fill(theme::SURFACE)
-                                    .corner_radius(9)
-                                    .inner_margin(10)
-                                    .show(ui, |ui| {
-                                        ui.label(RichText::new("轻度清理 · 日常推荐").strong());
-                                        ui.weak("只清低优先级待机缓存，不收缩应用工作集。");
-                                        ui.add_space(8.0);
-                                        if self.review.operations().is_none()
-                                            && actions::primary(
-                                                ui,
-                                                Icon::Clean,
-                                                if service.busy() {
-                                                    "正在处理…"
-                                                } else {
-                                                    "轻度清理一次"
-                                                },
-                                                !service.busy(),
-                                            )
-                                            .clicked()
-                                        {
-                                            self.review.begin(&CleanupConfig {
-                                                operations: Profile::Light.operations().to_vec(),
-                                                ..Default::default()
-                                            });
-                                            self.pinned = true;
-                                        }
-                                        if let Some(request) = cleanup_choice::review(
-                                            ui,
-                                            &mut self.review,
-                                            !service.busy(),
-                                        ) {
-                                            service.start(&request, false);
-                                        }
-                                        ui.add_space(6.0);
-                                        if actions::secondary(ui, Icon::General, "选择中度 / 重度")
-                                            .clicked()
-                                        {
-                                            action = Some(Action::AdvancedClean);
-                                        }
-                                        if !service.message.is_empty() {
-                                            ui.label(RichText::new(&service.message).size(11.0));
-                                        }
-                                    });
-                                ui.add_space(6.0);
-                                ui.weak("待机缓存已属于可用内存；清理无法修复内核池泄漏。");
-                            });
+                        ui.spacing_mut().item_spacing = egui::vec2(8.0, 6.0);
+                        let mut content = render::Content {
+                            config,
+                            snapshot,
+                            services,
+                            review: &mut self.review,
+                        };
+                        let rendered =
+                            render::show(ui, &layout, &self.state, now, &mut content, self.pinned);
+                        output.close |= rendered.close;
+                        output.action = rendered.action;
+                        output.toggle_pin = rendered.toggle_pin;
+                        output.group = rendered.group;
+                        output.regions = rendered.regions;
                     });
             },
         );
-        if close || action.is_some() {
-            self.review.cancel();
-            self.pinned = false;
-            self.until = Instant::now();
-            self.active = false;
-        } else {
-            ctx.request_repaint_after(Duration::from_millis(200));
+        if let Some(group) = output.group {
+            self.state.hover(now, Some(group), true);
         }
-        action
+        if output.toggle_pin {
+            self.pinned = !self.pinned;
+        }
+        if let Err(error) = services.desktop.quick_regions(&output.regions, preview) {
+            self.warning = Some(error);
+            output.close = true;
+        }
+        self.last_regions = output.regions;
+        if output.close || output.action.is_some() {
+            self.review.cancel();
+            self.state.close();
+            self.pinned = false;
+            self.preview = false;
+            self.last_regions.clear();
+        } else if self.state.animating(now, config.pet_animation) {
+            ctx.request_repaint_after(Duration::from_millis(16));
+        } else if let Some(delay) = self.state.next_input_check(now) {
+            ctx.request_repaint_after(delay);
+        }
+        output.action
     }
 }

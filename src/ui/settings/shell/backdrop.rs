@@ -14,8 +14,21 @@ pub fn show(ctx: &egui::Context) {
     let uv = egui::Rect::from_center_size(egui::pos2(0.5, 0.5), visible);
     let painter = ctx.layer_painter(egui::LayerId::background());
     painter.add(
-        egui::epaint::RectShape::filled(rect, 18, Color32::from_rgb(145, 160, 178))
+        egui::epaint::RectShape::filled(rect, 18, Color32::from_rgb(127, 143, 161))
             .with_texture(texture.id(), uv),
+    );
+    painter.rect_filled(
+        egui::Rect::from_min_size(
+            rect.min,
+            egui::vec2(super::navigation::WIDTH, rect.height()),
+        ),
+        egui::CornerRadius {
+            nw: 18,
+            ne: 0,
+            sw: 18,
+            se: 0,
+        },
+        Color32::from_rgba_unmultiplied(17, 29, 41, 115),
     );
     painter.rect_stroke(
         rect.shrink(0.5),

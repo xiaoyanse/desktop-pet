@@ -1,15 +1,17 @@
 use crate::domain::{config::Config, resources::Snapshot};
 use crate::ui::common::{
+    artwork,
     icons::{self, Icon},
     theme,
 };
 use eframe::egui::{self, Color32, RichText};
+pub const WIDTH: f32 = 228.0;
 
 pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<usize> {
     let mut next = None;
     egui::SidePanel::left("settings-navigation")
         .show_separator_line(false)
-        .exact_width(212.0)
+        .exact_width(WIDTH)
         .resizable(false)
         .frame(
             egui::Frame::new()
@@ -19,20 +21,20 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
         .show(ctx, |ui| {
             let (brand, _) = ui
                 .allocate_exact_size(egui::vec2(ui.available_width(), 72.0), egui::Sense::hover());
-            icons::draw(
+            artwork::draw(
                 ui.painter(),
                 egui::Rect::from_center_size(
-                    brand.min + egui::vec2(24.0, 28.0),
-                    egui::vec2(46.0, 46.0),
+                    brand.min + egui::vec2(25.0, 30.0),
+                    egui::vec2(54.0, 54.0),
                 ),
-                Icon::Monitor,
+                "brand-planet",
                 Color32::WHITE,
             );
             ui.painter().text(
                 brand.min + egui::vec2(56.0, 13.0),
                 egui::Align2::LEFT_TOP,
                 "桌面仪表",
-                egui::FontId::proportional(21.0),
+                egui::FontId::proportional(22.0),
                 theme::TEXT,
             );
             ui.painter().text(
@@ -94,7 +96,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                     ui.painter(),
                     egui::Rect::from_center_size(
                         rect.min + egui::vec2(26.0, row_height * 0.5),
-                        egui::Vec2::splat((row_height - 8.0).min(40.0)),
+                        egui::Vec2::splat((row_height - 8.0).min(42.0)),
                     ),
                     icon,
                     color,
@@ -103,7 +105,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                     rect.min + egui::vec2(54.0, row_height * 0.5),
                     egui::Align2::LEFT_CENTER,
                     name,
-                    egui::FontId::proportional(14.0),
+                    egui::FontId::proportional(15.0),
                     if selected { theme::TEXT } else { theme::MUTED },
                 );
                 if response.clicked() {
@@ -133,7 +135,7 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
         6 => ("工作计时", "专注、休息与记录时长，按自己的节奏工作。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
-    ui.label(RichText::new(title).size(32.0).strong());
+    ui.label(RichText::new(title).size(34.0).strong());
     ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
@@ -142,6 +144,14 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
                 RichText::new("专注 · 休息 · 正计时")
                     .size(11.0)
                     .color(theme::ACCENT),
+            );
+            return;
+        }
+        if tab == 1 {
+            ui.label(
+                RichText::new("外观随你 · 数据常在")
+                    .size(12.0)
+                    .color(theme::CHAMPAGNE),
             );
             return;
         }

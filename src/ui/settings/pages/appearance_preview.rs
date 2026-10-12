@@ -3,15 +3,14 @@ use crate::ui::{
     common::theme,
     companion::pet::{self, Sprites},
     monitoring::{panel, surface},
-    settings::section,
 };
 use eframe::egui::{self, Color32, RichText};
 
 pub fn show(ui: &mut egui::Ui, config: &Config, snapshot: &Snapshot, pets: &mut Sprites) {
-    let available_height = ui.available_height();
-    let canvas_height = (available_height - 140.0).clamp(60.0, 248.0);
-    section(ui, "即时预览", |ui| {
-        ui.horizontal_wrapped(|ui| {
+    theme::glass_frame().inner_margin(16).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("即时预览").size(14.0).strong());
             ui.label(
                 RichText::new(if config.pet_mode {
                     "宠物"
@@ -25,13 +24,14 @@ pub fn show(ui: &mut egui::Ui, config: &Config, snapshot: &Snapshot, pets: &mut 
             );
         });
         ui.add_space(12.0);
+        let canvas_height = (ui.available_height() - 32.0).clamp(24.0, 320.0);
         let rows = panel::rows(config, snapshot);
         let monitor_height = ui
             .ctx()
             .input(|i| i.viewport().monitor_size.map(|s| s.y))
             .unwrap_or(900.0);
         let size = if config.pet_mode {
-            pet::SIZE * ((canvas_height - 16.0) / pet::SIZE.y).min(2.0)
+            pet::SIZE * ((canvas_height - 16.0) / pet::SIZE.y).min(3.2)
         } else {
             surface::size(config, &rows, false, monitor_height)
         };
@@ -119,7 +119,7 @@ pub fn show(ui: &mut egui::Ui, config: &Config, snapshot: &Snapshot, pets: &mut 
         }
         ui.add_space(8.0);
         ui.label(
-            RichText::new("当前采样 · 静态外观")
+            RichText::new("实时数值 · 外观预览")
                 .size(12.0)
                 .color(theme::MUTED),
         );
@@ -148,6 +148,25 @@ pub fn tile(
     p.rect_filled(rect, 6, Color32::from_rgba_unmultiplied(12, 23, 34, 130));
     let rows = panel::rows(config, snapshot);
     let base = Color32::from_rgb(config.color[0], config.color[1], config.color[2]);
+    if rect.width() < 140.0
+        && let Some(row) = rows.first()
+    {
+        p.text(
+            rect.center_top() + egui::vec2(0.0, rect.height() * 0.25),
+            egui::Align2::CENTER_CENTER,
+            &row.label,
+            egui::FontId::proportional(10.0),
+            theme::TEXT,
+        );
+        p.text(
+            rect.center_top() + egui::vec2(0.0, rect.height() * 0.68),
+            egui::Align2::CENTER_CENTER,
+            &row.reading.text,
+            egui::FontId::proportional(13.0),
+            panel::tint(panel::level(row), config.status_colors, base),
+        );
+        return;
+    }
     let row_height = rect.height() * 0.5;
     for (index, row) in rows.iter().take(2).enumerate() {
         let y = rect.top() + row_height * index as f32 + row_height * 0.4;

@@ -42,6 +42,9 @@ impl DesktopSession for WindowsDesktop {
     fn configure_auxiliary(&self) {
         super::shell_surface::auxiliary();
     }
+    fn quick_regions(&self, regions: &[[f32; 4]], preview: bool) -> Result<(), String> {
+        super::quick_regions::apply(regions, preview)
+    }
     fn cursor(&self) -> Option<[f32; 2]> {
         unsafe {
             use windows_sys::Win32::{
