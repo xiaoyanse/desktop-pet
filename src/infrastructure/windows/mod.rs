@@ -1,3 +1,4 @@
+pub mod clipboard;
 pub mod desktop;
 pub mod diagnostics;
 pub mod fonts;

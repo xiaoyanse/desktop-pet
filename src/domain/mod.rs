@@ -1,5 +1,6 @@
 pub mod cleanup;
 pub mod cleanup_profile;
+pub mod clipboard;
 pub mod companion;
 pub mod config;
 pub mod desktop;

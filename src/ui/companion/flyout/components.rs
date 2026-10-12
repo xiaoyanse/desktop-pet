@@ -62,7 +62,17 @@ pub fn show(
         }
         (Group::Office, 0) => timer(ui, content, action),
         (Group::Office, 1) => {
-            ui.label(RichText::new("便签与待办").size(14.0).strong());
+            let title = ui.label(RichText::new("便签与待办").size(14.0).strong());
+            let rect = egui::Rect::from_center_size(
+                egui::pos2(ui.max_rect().right() - 12.0, title.rect.center().y),
+                egui::Vec2::splat(22.0),
+            );
+            if crate::ui::common::icons::positioned_button(ui, Icon::Copy, "剪贴板历史", rect)
+                .on_hover_text("打开剪贴板历史")
+                .clicked()
+            {
+                *action = Some(Action::Clipboard);
+            }
             let pending = content
                 .services
                 .office

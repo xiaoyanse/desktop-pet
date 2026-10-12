@@ -7,6 +7,7 @@ mod actions;
 mod meeting;
 mod office;
 mod screenshot;
+mod services;
 pub(crate) use screenshot::restore_root as restore_screenshot_root;
 pub(crate) use screenshot::suspend_root as suspend_screenshot_root;
 mod work_timer;
@@ -58,12 +59,12 @@ impl MonitorApp {
         cc: &eframe::CreationContext<'_>,
         config: Config,
         warning: Option<String>,
-        dependencies: Dependencies,
+        mut dependencies: Dependencies,
     ) -> Self {
         let ctx = cc.egui_ctx.clone();
         theme::setup(&ctx);
         let mut message = warning.unwrap_or_default();
-        if let Some(source) = dependencies.font {
+        if let Some(source) = dependencies.font.take() {
             super::common::fonts::install(&ctx, source);
         } else {
             super::common::fonts::configure_atlas(&ctx);
@@ -78,38 +79,7 @@ impl MonitorApp {
             })
             .unwrap_or(0);
         let wake: crate::interfaces::Wake = Arc::new(move || ctx.request_repaint());
-        let mut services = Services {
-            meeting: crate::application::meeting::MeetingService::new(
-                dependencies.microphone,
-                wake.clone(),
-            ),
-            office: crate::application::office::OfficeService::new(
-                dependencies.office_store,
-                dependencies.local_time,
-                wake.clone(),
-            ),
-            screenshot: crate::application::screenshot::ScreenshotService::new(
-                dependencies.screen_capture,
-                dependencies.screenshot_output,
-                wake.clone(),
-            ),
-            report: crate::application::report::ReportService::new(
-                dependencies.report_collector,
-                dependencies.report_store,
-                wake.clone(),
-            ),
-            timer: Default::default(),
-            settings: dependencies.settings,
-            cleaner: crate::application::cleanup::CleanupService::new(
-                dependencies.cleaner,
-                dependencies.cleanup_history,
-                wake.clone(),
-            ),
-            desktop: (dependencies.desktop)(hwnd, wake.clone()),
-        };
-        if !config.screenshot_folder.is_empty() {
-            services.screenshot.folder = config.screenshot_folder.clone();
-        }
+        let (services, sampler) = services::build(dependencies, hwnd, wake.clone(), &config);
         if let Some(warning) = services.desktop.warning() {
             message = warning;
         }
@@ -118,7 +88,7 @@ impl MonitorApp {
         {
             message = e;
         }
-        let worker = MonitorWorker::start(dependencies.sampler, config.clone(), wake);
+        let worker = MonitorWorker::start(sampler, config.clone(), wake);
         Self {
             saved_position: config.position,
             config,
@@ -361,6 +331,10 @@ impl eframe::App for MonitorApp {
         self.services.report.tick();
         self.office_tick(ctx);
         self.meeting_tick(ctx);
+        self.services.clipboard.tick();
+        if self.services.clipboard.stopping() || self.services.clipboard.copying() {
+            ctx.request_repaint_after(Duration::from_millis(50));
+        }
         if self.screenshot_tick(ctx) {
             return;
         }
@@ -401,6 +375,7 @@ impl eframe::App for MonitorApp {
             Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
             Some(flyout::Action::Timer) => self.settings.open_timer(),
             Some(flyout::Action::Meeting) => self.settings.open_meeting(),
+            Some(flyout::Action::Clipboard) => self.settings.open_clipboard(),
             Some(flyout::Action::Report) => self.settings.open_report(),
             Some(flyout::Action::Screenshot) => self.settings.open_screenshot(),
             Some(flyout::Action::Notes) => {

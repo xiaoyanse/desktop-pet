@@ -95,6 +95,15 @@ pub fn bare_button(ui: &mut egui::Ui, icon: Icon, tip: &str) -> egui::Response {
 
 pub fn sized_button(ui: &mut egui::Ui, icon: Icon, tip: &str, size: f32) -> egui::Response {
     let (rect, _) = ui.allocate_exact_size(Vec2::splat(size), egui::Sense::hover());
+    positioned_button(ui, icon, tip, rect)
+}
+
+pub fn positioned_button(
+    ui: &mut egui::Ui,
+    icon: Icon,
+    tip: &str,
+    rect: egui::Rect,
+) -> egui::Response {
     let response = ui.interact(
         rect,
         ui.id().with(("icon-button", tip)),
@@ -106,7 +115,7 @@ pub fn sized_button(ui: &mut egui::Ui, icon: Icon, tip: &str, size: f32) -> egui
         ui,
         &response,
         Role::Quiet,
-        theme::CONTROL_RADIUS.min((size * 0.3) as u8),
+        theme::CONTROL_RADIUS.min((rect.height() * 0.3) as u8),
     );
     draw(
         ui.painter(),

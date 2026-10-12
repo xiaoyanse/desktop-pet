@@ -1,4 +1,5 @@
 mod cleanup;
+mod clipboard;
 mod desktop;
 mod meeting;
 mod monitoring;
@@ -8,6 +9,7 @@ mod screenshot;
 mod storage;
 
 pub use cleanup::MemoryCleaner;
+pub use clipboard::{ClipboardBackend, ClipboardEvent, ClipboardWatch};
 pub use desktop::{DesktopAction, DesktopFactory, DesktopSession, FontSource};
 pub use meeting::MicrophoneSource;
 pub use monitoring::{ResourceSampler, SamplerFactory};

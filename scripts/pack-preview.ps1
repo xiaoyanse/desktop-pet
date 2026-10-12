@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory)][string]$SourceExecutable,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedSha256,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-fA-F]{40}$')][string]$SourceCommit,
-    [ValidatePattern('^[a-zA-Z0-9.-]+$')][string]$Version = '0.1.0-preview.22.20261012'
+    [Parameter(Mandatory)][ValidatePattern('^[a-zA-Z0-9.-]+$')][string]$Version,
+    [Parameter(Mandatory)][ValidateRange(1,100000)][int]$ChecksPassed,
+    [Parameter(Mandatory)][ValidateRange(1,1000)][int]$PreviewPages
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -30,10 +32,10 @@ $manifest = [ordered]@{
     sourceCommit = $SourceCommit
     createdAt = [DateTimeOffset]::Now.ToString('o')
     architecture = 'windows-x64'
-    automaticChecksPassed = 176
-    nativeSyntheticPreviewPages = 16
+    automaticChecksPassed = $ChecksPassed
+    nativeSyntheticPreviewPages = $PreviewPages
     fieldAcceptanceComplete = $false
-    uncommittedClipboardWorkIncluded = $false
+    uncommittedWorkIncluded = $false
     files = @(Get-ChildItem -LiteralPath $package -File | Sort-Object Name | ForEach-Object {
         [ordered]@{ name = $_.Name; bytes = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
     })

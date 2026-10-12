@@ -29,8 +29,13 @@ pub struct Settings {
     report_page: crate::ui::work_tools::diagnostic_report::Page,
     pub screenshot_page: crate::ui::work_tools::screenshot::Page,
     office_page: crate::ui::work_tools::office::Page,
+    clipboard_page: crate::ui::work_tools::clipboard::Page,
 }
 impl Settings {
+    pub fn open_clipboard(&mut self) {
+        self.tab = 11;
+        self.open = true;
+    }
     pub fn meeting_visible(&self) -> bool {
         self.open && self.tab == 10
     }
@@ -68,6 +73,7 @@ impl Settings {
         services: &mut Services,
     ) -> bool {
         if !self.open {
+            self.clipboard_page.release();
             return false;
         }
         let before = serde_json::to_string(config).unwrap();
@@ -91,6 +97,9 @@ impl Settings {
                 closed |= window_chrome::show(ctx);
                 if let Some(tab) = navigation::navigation(ctx, self.tab, config) {
                     self.confirm_clean.cancel();
+                    if self.tab == 11 && tab != 11 {
+                        self.clipboard_page.release();
+                    }
                     self.tab = tab;
                 }
                 egui::CentralPanel::default()
@@ -125,6 +134,12 @@ impl Settings {
                             }
                         } else if self.tab == 9 {
                             self.office_page.show(ui, &mut services.office);
+                        } else if self.tab == 11 {
+                            self.clipboard_page.show(
+                                ui,
+                                &mut config.clipboard,
+                                &mut services.clipboard,
+                            );
                         } else {
                             egui::ScrollArea::vertical()
                                 .id_salt(("settings-scroll", self.tab))
@@ -160,10 +175,19 @@ impl Settings {
             self.confirm_clean.cancel();
             artwork::release(ctx, "workspace");
             self.screenshot_page.release();
+            self.clipboard_page.release();
             services.screenshot.discard();
         }
         before != serde_json::to_string(config).unwrap()
     }
+}
+pub(crate) fn clipboard_preview(
+    ctx: &egui::Context,
+    page: &mut crate::ui::work_tools::clipboard::Page,
+    service: &mut crate::application::clipboard::ClipboardService,
+) {
+    let mut config = service.config.clone();
+    preview_shell(ctx, 11, |ui| page.show(ui, &mut config, service));
 }
 pub fn section(ui: &mut egui::Ui, title: &str, content: impl FnOnce(&mut egui::Ui)) {
     theme::glass_panel(ui, |ui| {

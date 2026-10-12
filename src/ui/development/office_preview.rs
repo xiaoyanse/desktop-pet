@@ -24,6 +24,7 @@ pub struct Preview {
     gallery: super::components::Gallery,
     states: super::component_states::States,
     screenshot: super::screenshot_preview::Preview,
+    clipboard: super::clipboard_preview::Preview,
     pets: crate::ui::companion::pet::Sprites,
     config: Config,
     editing: Option<Metric>,
@@ -40,6 +41,7 @@ impl Preview {
             gallery: super::components::Gallery::default(),
             states: super::component_states::States::default(),
             screenshot: super::screenshot_preview::Preview::default(),
+            clipboard: Default::default(),
             pets: Default::default(),
             config: Config::default(),
             editing: None,
@@ -53,6 +55,9 @@ impl Preview {
     }
     pub fn stage(&mut self, stage: usize, service: &OfficeService) {
         self.stage = stage;
+        if stage >= 16 {
+            self.clipboard.stage(stage);
+        }
         self.page
             .open(if stage == 0 { Kind::Note } else { Kind::Task });
         if stage == 2 {
@@ -82,7 +87,9 @@ impl Preview {
         }
     }
     pub fn show(&mut self, ctx: &egui::Context, service: &mut OfficeService) {
-        if self.stage == 15 {
+        if self.stage >= 16 {
+            self.clipboard.show(ctx);
+        } else if self.stage == 15 {
             self.screenshot.show(ctx);
         } else if self.stage == 14 {
             crate::ui::settings::appearance_components_preview(

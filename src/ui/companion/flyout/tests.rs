@@ -102,6 +102,7 @@ impl DesktopSession for Desktop {
 }
 pub(super) fn services() -> Services {
     Services {
+        clipboard: crate::application::clipboard::tests::fake_service().0,
         meeting: crate::application::meeting::tests::fake_service().0,
         office: crate::application::office::tests::fake_service().0,
         screenshot: crate::application::screenshot::tests::fake_service().0,
@@ -486,4 +487,87 @@ fn office_controls_reuse_real_timer_and_categories_do_not_activate_other_tools()
         click(&ctx, &mut content, &state, "打开诊断报告").action,
         Some(Action::Report)
     );
+}
+#[test]
+fn clipboard_icon_routes_at_every_corner_without_enabling_recording() {
+    for frame in [
+        [0.0, 0.0, 72.0, 84.0],
+        [1848.0, 0.0, 1920.0, 84.0],
+        [0.0, 948.0, 72.0, 1032.0],
+        [1848.0, 948.0, 1920.0, 1032.0],
+    ] {
+        let ctx = egui::Context::default();
+        crate::ui::common::theme::setup(&ctx);
+        let config = Config::default();
+        let snapshot = Snapshot::default();
+        let mut services = services();
+        let mut review = Review::default();
+        let mut state = MenuState::default();
+        state.open(Duration::ZERO);
+        state.hover(Duration::ZERO, Some(Group::Office), true);
+        let mut content = Content {
+            config: &config,
+            snapshot: &snapshot,
+            services: &mut services,
+            review: &mut review,
+        };
+        let layout = Layout::new(DesktopGeometry {
+            frame,
+            work_area: [0.0, 0.0, 1920.0, 1032.0],
+        });
+        let mut output = paint_layout(
+            &ctx,
+            &mut content,
+            &state,
+            vec![],
+            &layout,
+            Duration::from_secs(1),
+        )
+        .0;
+        for _ in 0..2 {
+            output = paint_layout(
+                &ctx,
+                &mut content,
+                &state,
+                vec![],
+                &layout,
+                Duration::from_secs(1),
+            )
+            .0;
+        }
+        let texture = crate::ui::common::artwork::texture(&ctx, "clipboard").id();
+        let point = output
+            .shapes
+            .iter()
+            .find_map(|s| match &s.shape {
+                egui::Shape::Mesh(m) if m.texture_id == texture => {
+                    assert!(s.clip_rect.contains_rect(m.calc_bounds()));
+                    Some(m.calc_bounds().center())
+                }
+                _ => None,
+            })
+            .unwrap();
+        let mut result = render::Output::default();
+        for pressed in [true, false] {
+            result = paint_layout(
+                &ctx,
+                &mut content,
+                &state,
+                vec![
+                    egui::Event::PointerMoved(point),
+                    egui::Event::PointerButton {
+                        pos: point,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: Default::default(),
+                    },
+                ],
+                &layout,
+                Duration::from_secs(1),
+            )
+            .1;
+        }
+        assert_eq!(result.action, Some(Action::Clipboard));
+        assert!(content.services.clipboard.state == crate::application::clipboard::State::Off);
+    }
 }

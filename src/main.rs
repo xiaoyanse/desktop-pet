@@ -179,6 +179,7 @@ fn main() {
         ),
         local_time: std::sync::Arc::new(infrastructure::windows::local_time::WindowsLocalTime),
         microphone: std::sync::Arc::new(infrastructure::windows::microphone::WindowsMicrophone),
+        clipboard: std::sync::Arc::new(infrastructure::windows::clipboard::WindowsClipboard),
     });
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title("桌面资源监视器")

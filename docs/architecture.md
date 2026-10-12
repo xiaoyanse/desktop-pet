@@ -46,6 +46,8 @@ UI 不导入 infrastructure，不直接读取设置文件或调用 Win32。后�
 
 ## 新功能如何加入
 
+剪贴板历史按 `domain/clipboard`（容量/重复/固定/缩略图）、`interfaces/clipboard`（事件监听及原始内容复制）、`application/clipboard`（启用/暂停/退休/复制/错误）、`infrastructure/windows/clipboard`（message-only窗口、原始字节读取与Unicode/DIB/PNG解码）和 `ui/work_tools/clipboard`（页面、虚拟列表及主题弹窗）组织。主入口注入Windows实现，`ui/monitor/services`集中装配已注入的服务，避免主监测协调器继续变大；UI不调用剪贴板Win32 API。用户历史仅在会话内存，设置只持久化容量，不保存启用状态或内容。异步结果单槽有界，默认不创建监听线程，可见行纹理缓存离页释放。生命周期、实际读取边界与跨软件未验收范围见《剪贴板历史》。
+
 系统字体由 Windows `fonts` 模块加载，接口以 `FontSource` 传递中立的名称与借用/自有字节；UI `common/fonts` 只配置 egui 字体族，主监测入口不负责字体 I/O。Windows 优先只读映射，OnceLock 保留一次成功字体的 backing 至进程退出；UI 使用静态借用，不把字节转为 Vec。映射失败才读取并保留一份缓冲，亦按静态借用交给框架。跨层字体/中文回归在 `src/integration_tests`，UI 仅在测试编译时重导出测试入口，不放宽生产层间边界。
 
 自绘设置窗、开关、数值编辑和分类页签属于 UI；窗口按钮通过 egui 视口命令交给宿主执行，不在 UI 调 Win32。`DesktopSession::configure_auxiliary` 在辅助窗口创建后调用，Windows 的 `settings_surface` 处理设置窗的原生标题/八方向缩放命中，按 DPI 换算且保留按钮和内容客户区；仅附着当前进程的设置窗。`surface` 共享卡片与预览的尺寸/表面规则，预览消费已有采样，不启动独立采样服务。只读诊断分别暴露原始样式位和实际非客户区边距，避免把 Windows 保留的样式位当成可见系统框。

@@ -191,6 +191,7 @@ pub struct Config {
     pub cleanup: super::cleanup::CleanupConfig,
     pub timer: super::work_timer::TimerConfig,
     pub meeting: super::meeting::MeetingConfig,
+    pub clipboard: super::clipboard::ClipboardConfig,
     pub screenshot_folder: String,
 }
 impl Default for Config {
@@ -248,6 +249,7 @@ impl Default for Config {
             cleanup: super::cleanup::CleanupConfig::default(),
             timer: super::work_timer::TimerConfig::default(),
             meeting: super::meeting::MeetingConfig::default(),
+            clipboard: super::clipboard::ClipboardConfig::default(),
             screenshot_folder: String::new(),
         }
     }
@@ -318,6 +320,7 @@ impl Config {
         self.cleanup.normalize();
         self.timer.normalize();
         self.meeting.normalize();
+        self.clipboard.normalize();
     }
     pub fn enabled(&self, group: &str) -> bool {
         self.rows

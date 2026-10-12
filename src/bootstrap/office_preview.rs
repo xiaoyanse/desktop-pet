@@ -28,6 +28,10 @@ const STAGES: &[&str] = &[
     "color-picker.png",
     "appearance.png",
     "screenshot-toolbar.png",
+    "clipboard-off.png",
+    "clipboard-history.png",
+    "clipboard-capacity.png",
+    "clipboard-confirmation.png",
 ];
 impl OfficeStore for Memory {
     fn load(&self) -> Result<Book, String> {

@@ -19,6 +19,7 @@ const ENTRIES: &[(usize, Icon, &str)] = &[
     (8, Icon::Screenshot, "截图与贴图"),
     (9, Icon::Note, "便签与待办"),
     (10, Icon::Meeting, "会议辅助"),
+    (11, Icon::Copy, "剪贴板历史"),
 ];
 
 pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<usize> {
@@ -62,8 +63,13 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
             let spacing = ui.spacing().item_spacing.y;
             ui.spacing_mut().item_spacing.y = 0.0;
             let count = ENTRIES.len() as f32;
+            let gap = if ui.available_height() < 650.0 {
+                4.0
+            } else {
+                8.0
+            };
             let row_height =
-                ((ui.available_height() - 68.0 - count * 8.0) / count).clamp(24.0, 60.0);
+                ((ui.available_height() - 68.0 - count * gap) / count).clamp(24.0, 60.0);
             for &(index, icon, name) in ENTRIES {
                 let (rect, _) = ui.allocate_exact_size(
                     egui::vec2(ui.available_width(), row_height),
@@ -112,7 +118,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 if response.clicked() {
                     next = Some(index);
                 }
-                ui.add_space(8.0);
+                ui.add_space(gap);
             }
             ui.spacing_mut().item_spacing.y = spacing;
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
@@ -142,12 +148,21 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
         8 => ("截图与贴图", "选择画面、标出重点，让参考随手可见。"),
         9 => ("便签与待办", "把想法留在本地，让下一步按时出现。"),
         10 => ("会议辅助", "记录会议时长，按需检查通信麦克风。"),
+        11 => ("剪贴板历史", "手动记录新复制的内容，让文字与图片随手可用。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
     ui.label(RichText::new(title).size(34.0).strong());
     ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
+        if tab == 11 {
+            ui.label(
+                RichText::new("默认关闭 · 会话内存 · 原始内容")
+                    .size(12.0)
+                    .color(theme::CHAMPAGNE),
+            );
+            return;
+        }
         if tab == 10 {
             ui.label(
                 RichText::new("手动计时 · 只读状态 · 温和提醒")
@@ -250,7 +265,7 @@ mod tests {
                 })
                 .unwrap()
         };
-        let last = bounds("会议辅助");
+        let last = bounds("剪贴板历史");
         let footer = bounds("本机监测");
         assert!(
             last.bottom() + 12.0 < footer.top(),

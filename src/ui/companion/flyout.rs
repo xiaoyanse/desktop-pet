@@ -29,6 +29,7 @@ pub enum Action {
     Notes,
     Tasks,
     Meeting,
+    Clipboard,
 }
 pub struct Flyout {
     pub pinned: bool,
