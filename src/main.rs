@@ -142,7 +142,7 @@ fn main() {
         options,
         Box::new(move |cc| {
             if let Some(path) = resource_probe {
-                bootstrap::resource_probe::install(&cc.egui_ctx, &path)?;
+                bootstrap::resource_probe::install(&cc.egui_ctx, &path, cc.gl.as_deref())?;
             }
             let mut app = ui::monitor::MonitorApp::new(cc, config, warning, dependencies);
             if open_settings {

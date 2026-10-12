@@ -5,6 +5,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+mod inspect_window_formats;
 
 #[repr(C)]
 #[derive(Default)]
@@ -157,6 +158,7 @@ fn inspect(pid: u32, expected: &Path) -> Result<String, String> {
     for (name, [private, shared]) in summaries {
         output.push_str(&format!("{name}\t{private}\t{shared}\n"));
     }
+    output.push_str(&inspect_window_formats::read(pid)?);
     Ok(output)
 }
 fn main() {

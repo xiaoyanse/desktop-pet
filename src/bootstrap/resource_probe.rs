@@ -18,15 +18,21 @@ struct Probe {
     started: Instant,
     last: Option<Instant>,
     rows: usize,
+    renderer: Option<serde_json::Value>,
 }
 
-pub fn install(ctx: &egui::Context, path: &Path) -> std::io::Result<()> {
+pub fn install(
+    ctx: &egui::Context,
+    path: &Path,
+    gl: Option<&eframe::glow::Context>,
+) -> std::io::Result<()> {
     let file = OpenOptions::new().write(true).create_new(true).open(path)?;
     let probe = Arc::new(Mutex::new(Probe {
         file,
         started: Instant::now(),
         last: None,
         rows: 0,
+        renderer: gl.map(renderer_metadata),
     }));
     ctx.on_end_pass(
         "bounded-ui-resource-probe",
@@ -37,6 +43,41 @@ pub fn install(ctx: &egui::Context, path: &Path) -> std::io::Result<()> {
         }),
     );
     Ok(())
+}
+
+fn renderer_metadata(gl: &eframe::glow::Context) -> serde_json::Value {
+    use eframe::glow::{self, HasContext};
+    // CreationContext guarantees a current root GL context; never inspect another app's GL state.
+    unsafe {
+        let default_framebuffer = gl.get_parameter_i32(glow::FRAMEBUFFER_BINDING) == 0;
+        let double_buffered = gl.get_parameter_i32(glow::DOUBLEBUFFER) != 0;
+        let color = if double_buffered {
+            glow::BACK_LEFT
+        } else {
+            glow::FRONT_LEFT
+        };
+        let bits = |attachment, parameter| {
+            default_framebuffer.then(|| {
+                gl.get_framebuffer_attachment_parameter_i32(
+                    glow::FRAMEBUFFER,
+                    attachment,
+                    parameter,
+                )
+            })
+        };
+        let mut metadata = serde_json::json!({
+            "scope":"creation-root-default-framebuffer", "defaultFramebufferBound":default_framebuffer,
+            "renderer":gl.get_parameter_string(glow::RENDERER),
+            "version":gl.get_parameter_string(glow::VERSION),
+            "doubleBuffered":double_buffered,"samples":gl.get_parameter_i32(glow::SAMPLES),
+            "redBits":bits(color,glow::FRAMEBUFFER_ATTACHMENT_RED_SIZE),
+            "alphaBits":bits(color,glow::FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE),
+            "depthBits":bits(glow::DEPTH,glow::FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE),
+            "stencilBits":bits(glow::STENCIL,glow::FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE)
+        });
+        metadata["queryError"] = serde_json::json!(gl.get_error());
+        metadata
+    }
 }
 
 impl Probe {
@@ -82,6 +123,7 @@ impl Probe {
             "fontAtlasFill":ctx.fonts(|fonts|fonts.font_atlas_fill_ratio()),
             "textureBytes":texture_bytes,"textureCount":texture_count,"texturesTruncated":texture_count > 128,
             "textures":textures,
+            "renderer":self.renderer,
             "memoryMeasured":measured, "workingSetBytes":memory.WorkingSetSize,
             "privateBytes":memory.PrivateUsage,"peakWorkingSetBytes":memory.PeakWorkingSetSize,
             "peakCommitBytes":memory.PeakPagefileUsage
@@ -110,7 +152,7 @@ mod tests {
             .as_nanos();
         let path = folder.join(format!("{}-{suffix}.jsonl", std::process::id()));
         let ctx = egui::Context::default();
-        install(&ctx, &path).unwrap();
+        install(&ctx, &path, None).unwrap();
         for _ in 0..5 {
             let _ = ctx.run(egui::RawInput::default(), |_| {});
         }
@@ -124,7 +166,7 @@ mod tests {
         assert_eq!(row["memoryMeasured"], true);
         assert!(row["workingSetBytes"].as_u64().unwrap() > 0);
         assert!(row["fontImageSize"][0].as_u64().unwrap() > 0);
-        assert!(install(&ctx, &path).is_err());
+        assert!(install(&ctx, &path, None).is_err());
         assert_eq!(std::fs::read_to_string(&path).unwrap(), content);
 
         let limit_path = folder.join(format!("{}-{suffix}-limit.jsonl", std::process::id()));
@@ -137,6 +179,7 @@ mod tests {
             started: Instant::now(),
             last: None,
             rows: 0,
+            renderer: None,
         };
         for _ in 0..MAX_ROWS + 10 {
             probe.last = None;

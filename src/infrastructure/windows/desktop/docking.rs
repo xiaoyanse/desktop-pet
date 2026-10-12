@@ -83,7 +83,7 @@ fn bounds(hwnd: HWND) -> Option<(RECT, RECT)> {
         Some((rect, info.rcWork))
     }
 }
-fn area_for(rect: &RECT) -> Option<RECT> {
+pub(super) fn area_for(rect: &RECT) -> Option<RECT> {
     unsafe {
         let monitor = MonitorFromRect(rect, MONITOR_DEFAULTTONEAREST);
         let mut info = MONITORINFO {
@@ -93,7 +93,7 @@ fn area_for(rect: &RECT) -> Option<RECT> {
         (GetMonitorInfoW(monitor, &mut info) != 0).then_some(info.rcWork)
     }
 }
-fn constrain(rect: RECT, area: RECT) -> RECT {
+pub(super) fn constrain(rect: RECT, area: RECT) -> RECT {
     let width = (rect.right - rect.left).min(area.right - area.left).max(1);
     let height = (rect.bottom - rect.top).min(area.bottom - area.top).max(1);
     let left = rect.left.clamp(area.left, area.right - width);

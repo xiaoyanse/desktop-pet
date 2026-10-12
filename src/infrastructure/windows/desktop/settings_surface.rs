@@ -5,10 +5,48 @@ use windows_sys::Win32::{
 };
 
 const ID: usize = 0x0440;
+const ATTACHED: *const u16 = windows_sys::core::w!("DesktopMeter.SettingsSurface");
 
 pub fn attach(hwnd: HWND) {
     unsafe {
-        SetWindowSubclass(hwnd, Some(callback), ID, 0);
+        let mut pid = 0;
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        if pid != std::process::id() || !GetPropW(hwnd, ATTACHED).is_null() {
+            return;
+        }
+        if SetWindowSubclass(hwnd, Some(callback), ID, 0) != 0 {
+            SetPropW(hwnd, ATTACHED, ID as HANDLE);
+            repair_position(hwnd);
+        }
+    }
+}
+
+fn repair_position(hwnd: HWND) {
+    unsafe {
+        if IsZoomed(hwnd) != 0 || IsIconic(hwnd) != 0 {
+            return;
+        }
+        let mut rect = RECT::default();
+        if GetWindowRect(hwnd, &mut rect) == 0 {
+            return;
+        }
+        let Some(area) = super::docking::area_for(&rect) else {
+            return;
+        };
+        let bounded = super::docking::constrain(rect, area);
+        if (rect.left, rect.top, rect.right, rect.bottom)
+            != (bounded.left, bounded.top, bounded.right, bounded.bottom)
+        {
+            SetWindowPos(
+                hwnd,
+                std::ptr::null_mut(),
+                bounded.left,
+                bounded.top,
+                bounded.right - bounded.left,
+                bounded.bottom - bounded.top,
+                SWP_NOZORDER | SWP_NOACTIVATE,
+            );
+        }
     }
 }
 
@@ -65,8 +103,17 @@ unsafe extern "system" fn callback(
         }
         if msg == WM_NCDESTROY {
             RemoveWindowSubclass(hwnd, Some(callback), ID);
+            RemovePropW(hwnd, ATTACHED);
         }
-        DefSubclassProc(hwnd, msg, w, l)
+        let result = DefSubclassProc(hwnd, msg, w, l);
+        if matches!(
+            msg,
+            WM_WINDOWPOSCHANGED | WM_EXITSIZEMOVE | WM_DISPLAYCHANGE
+        ) {
+            // Restore/resize must settle before measuring the actual physical window bounds.
+            repair_position(hwnd);
+        }
+        result
     }
 }
 
@@ -98,6 +145,77 @@ mod tests {
             [-1.0, 0.0],
         ] {
             assert_eq!(hit(point, size), None);
+        }
+    }
+
+    #[test]
+    fn hidden_window_bounds_are_repaired_without_activation_or_z_order_change() {
+        struct TestWindow(HWND);
+        impl Drop for TestWindow {
+            fn drop(&mut self) {
+                unsafe {
+                    DestroyWindow(self.0);
+                }
+            }
+        }
+        unsafe {
+            let class: Vec<_> = "STATIC\0".encode_utf16().collect();
+            let title: Vec<_> = "DesktopMeter hidden bounds regression\0"
+                .encode_utf16()
+                .collect();
+            let hwnd = CreateWindowExW(
+                0,
+                class.as_ptr(),
+                title.as_ptr(),
+                WS_POPUP,
+                -55,
+                247,
+                1040,
+                820,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null(),
+            );
+            assert!(!hwnd.is_null());
+            let owned = TestWindow(hwnd);
+            repair_position(owned.0);
+            for iteration in 0..3 {
+                let mut rect = RECT::default();
+                assert_ne!(GetWindowRect(hwnd, &mut rect), 0);
+                let area = super::super::docking::area_for(&rect).unwrap();
+                assert!(
+                    rect.left >= area.left
+                        && rect.top >= area.top
+                        && rect.right <= area.right
+                        && rect.bottom <= area.bottom
+                );
+                if iteration == 0 {
+                    // Reproduce the old -55px restore bounds on an invisible test-owned window.
+                    SetWindowPos(
+                        hwnd,
+                        std::ptr::null_mut(),
+                        area.left - 55,
+                        area.top + 247,
+                        1040,
+                        820,
+                        SWP_NOZORDER | SWP_NOACTIVATE,
+                    );
+                    repair_position(hwnd);
+                } else if iteration == 1 {
+                    SetWindowPos(
+                        hwnd,
+                        std::ptr::null_mut(),
+                        area.right - 100,
+                        area.bottom - 100,
+                        1040,
+                        820,
+                        SWP_NOZORDER | SWP_NOACTIVATE,
+                    );
+                    repair_position(hwnd);
+                }
+                assert_eq!(IsWindowVisible(hwnd), 0);
+            }
         }
     }
 }
