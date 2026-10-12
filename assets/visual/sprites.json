@@ -2,6 +2,13 @@
   "version": 1,
   "atlases": [
     {
+      "file": "atlases/navigation-glass-v1.png",
+      "grid": [4, 2],
+      "size": 64,
+      "isolate": true,
+      "names": ["nav-monitor", "nav-appearance", "nav-devices", "nav-general", "nav-clean", "nav-history", "nav-timer", "nav-report"]
+    },
+    {
       "file": "atlases/workbench-details-v1.png",
       "grid": [
         2,
@@ -136,12 +143,12 @@
     }
   ],
   "runtime": [
-    "monitor",
-    "appearance",
-    "devices",
-    "general",
-    "clean",
-    "history",
+    "nav-monitor",
+    "nav-appearance",
+    "nav-devices",
+    "nav-general",
+    "nav-clean",
+    "nav-history",
     "settings",
     "pin",
     "unpin",
@@ -159,7 +166,7 @@
     "cleanup-light",
     "cleanup-medium",
     "cleanup-heavy",
-    "timer",
+    "nav-timer",
     "play",
     "pause",
     "resource-orb",
@@ -173,7 +180,7 @@
     "view-satin",
     "view-glass",
     "view-immersive",
-    "report",
+    "nav-report",
     "clipboard",
     "save-local"
   ],

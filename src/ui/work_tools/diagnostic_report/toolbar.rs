@@ -7,7 +7,7 @@ use eframe::egui::{self, RichText};
 
 pub fn show(ui: &mut egui::Ui, config: &Config, service: &mut ReportService) {
     let busy = service.busy();
-    theme::glass_frame().show(ui, |ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.horizontal_wrapped(|ui| {
             ui.allocate_ui(egui::vec2(180.0, 48.0), |ui| {

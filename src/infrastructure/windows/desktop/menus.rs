@@ -28,12 +28,12 @@ impl Glyph {
             Self::Restore => "restore",
             Self::Settings => "settings",
             Self::Compact => "compact",
-            Self::Memory => "clean",
+            Self::Memory => "nav-clean",
             Self::Cursor => "unpin",
             Self::Exit => "close",
-            Self::Background => "monitor",
+            Self::Background => "nav-monitor",
             Self::Border => "maximize",
-            Self::Pet => "appearance",
+            Self::Pet => "nav-appearance",
         }
     }
 }

@@ -133,7 +133,7 @@ impl Settings {
     }
 }
 pub fn section(ui: &mut egui::Ui, title: &str, content: impl FnOnce(&mut egui::Ui)) {
-    theme::glass_frame().show(ui, |ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.label(RichText::new(title).size(14.0).strong().color(theme::TEXT));
         ui.add_space(12.0);

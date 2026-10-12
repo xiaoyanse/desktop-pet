@@ -117,7 +117,7 @@ mod tests {
         let mut initial = None;
         for frame in 0..8 {
             let out = ctx.run(egui::RawInput::default(), |ctx| {
-                let texture = texture(ctx, "clean");
+                let texture = texture(ctx, "nav-clean");
                 if let Some(id) = initial {
                     assert_eq!(texture.id(), id);
                 } else {
@@ -128,7 +128,7 @@ mod tests {
                     draw(
                         &p,
                         egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(24.0, 24.0)),
-                        "clean",
+                        "nav-clean",
                         Color32::WHITE,
                     );
                 }
@@ -139,7 +139,7 @@ mod tests {
                 assert!(out.textures_delta.set.is_empty());
             }
         }
-        release(&ctx, "clean");
-        assert_ne!(texture(&ctx, "clean").id(), initial.unwrap());
+        release(&ctx, "nav-clean");
+        assert_ne!(texture(&ctx, "nav-clean").id(), initial.unwrap());
     }
 }

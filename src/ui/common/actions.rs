@@ -1,4 +1,5 @@
 use super::{
+    glass,
     icons::{self, Icon},
     theme,
 };
@@ -9,14 +10,29 @@ pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egu
         enabled,
         egui::Button::new("")
             .fill(if enabled {
-                Color32::from_rgb(54, 84, 86)
+                Color32::from_rgb(62, 77, 89)
             } else {
                 Color32::from_rgb(43, 58, 70)
             })
+            .stroke(egui::Stroke::new(
+                1.0_f32,
+                if enabled {
+                    theme::CHAMPAGNE.gamma_multiply(0.65)
+                } else {
+                    theme::LINE
+                },
+            ))
             .corner_radius(10)
             .min_size(egui::vec2(ui.available_width(), 48.0)),
     );
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
+    if enabled {
+        ui.painter().add(glass::finish(
+            response.rect.shrink(1.0),
+            9.0,
+            response.hovered() || response.has_focus(),
+        ));
+    }
     let foreground = if enabled {
         theme::TEXT
     } else {
@@ -64,6 +80,13 @@ pub fn secondary(ui: &mut egui::Ui, icon: Icon, label: &str) -> egui::Response {
     response.widget_info(|| {
         egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
     });
+    if ui.is_enabled() {
+        ui.painter().add(glass::finish(
+            response.rect.shrink(1.0),
+            7.0,
+            response.has_focus(),
+        ));
+    }
     icons::draw(
         ui.painter(),
         egui::Rect::from_center_size(

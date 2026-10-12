@@ -1,6 +1,6 @@
 use crate::domain::{config::Config, resources::Snapshot};
 use crate::ui::{
-    common::{actions, artwork, icons::Icon, theme, widgets},
+    common::{actions, artwork, glass, icons::Icon, theme, widgets},
     companion::pet::Sprites,
 };
 use eframe::egui::{self, Color32, RichText};
@@ -12,7 +12,7 @@ pub fn show(
     snapshot: &Snapshot,
 ) -> bool {
     let mut try_spiral = false;
-    theme::glass_frame().show(ui, |ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         section(ui, "桌面视图", |ui| {
             view_choices(ui, config, snapshot, pets)
@@ -152,11 +152,20 @@ fn view_choices(ui: &mut egui::Ui, config: &mut Config, snapshot: &Snapshot, pet
                 12,
                 Color32::from_rgba_unmultiplied(21, 34, 46, if selected { 90 } else { 55 }),
             );
+            ui.painter()
+                .add(glass::finish(rect.shrink(1.0), 11.0, selected));
             if selected || response.hovered() || response.has_focus() {
                 ui.painter().rect_stroke(
                     rect,
                     12,
-                    egui::Stroke::new(if selected { 1.5_f32 } else { 1.0_f32 }, theme::CHAMPAGNE),
+                    egui::Stroke::new(
+                        if selected { 1.5_f32 } else { 1.0_f32 },
+                        if selected {
+                            theme::CHAMPAGNE
+                        } else {
+                            Color32::from_white_alpha(95)
+                        },
+                    ),
                     egui::StrokeKind::Inside,
                 );
             }

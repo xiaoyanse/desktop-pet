@@ -7,7 +7,7 @@ use crate::ui::{
 use eframe::egui::{self, Color32, RichText};
 
 pub fn show(ui: &mut egui::Ui, config: &Config, snapshot: &Snapshot, pets: &mut Sprites) {
-    theme::glass_frame().inner_margin(16).show(ui, |ui| {
+    crate::ui::common::glass::show(ui, theme::glass_frame().inner_margin(16), |ui| {
         ui.set_width(ui.available_width());
         ui.horizontal(|ui| {
             ui.label(RichText::new("即时预览").size(14.0).strong());

@@ -52,7 +52,7 @@ pub fn show(
         );
     });
     ui.add_space(14.0);
-    theme::glass_frame().show(ui, |ui| list(ui, config, editing, *filter));
+    theme::glass_panel(ui, |ui| list(ui, config, editing, *filter));
     ui.add_space(12.0);
     ui.label(
         RichText::new("可用容量越低压力越高；速度与内核池大小保持主题色。")

@@ -1,6 +1,6 @@
 use crate::domain::{config::Config, resources::Snapshot};
 use crate::ui::common::{
-    artwork,
+    artwork, glass,
     icons::{self, Icon},
     theme,
 };
@@ -79,12 +79,14 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                             theme::HOVER
                         },
                     );
+                    ui.painter()
+                        .add(glass::finish(rect.shrink(1.0), 11.0, selected));
                 }
                 if selected {
                     ui.painter().rect_stroke(
                         rect,
                         12,
-                        egui::Stroke::new(1.0_f32, theme::CHAMPAGNE.gamma_multiply(0.6)),
+                        egui::Stroke::new(1.0_f32, theme::CHAMPAGNE.gamma_multiply(0.7)),
                         egui::StrokeKind::Inside,
                     );
                 }

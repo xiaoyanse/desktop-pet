@@ -10,6 +10,13 @@ pub const CHAMPAGNE: Color32 = Color32::from_rgb(218, 201, 174);
 pub const HOVER: Color32 = Color32::from_rgb(43, 57, 68);
 pub const PROGRESS_TRACK: Color32 = Color32::from_rgb(75, 93, 105);
 
+pub fn glass_panel<R>(
+    ui: &mut egui::Ui,
+    contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::InnerResponse<R> {
+    super::glass::show(ui, glass_frame(), contents)
+}
+
 pub fn glass_frame() -> egui::Frame {
     egui::Frame::new()
         .fill(Color32::from_rgba_unmultiplied(28, 41, 54, 96))

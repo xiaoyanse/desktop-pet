@@ -25,12 +25,13 @@
 | atlases/office-v1.png | 1774×887，4×2 | 8 个办公图标已切图，相关功能待实现 | [office-icons-v1](prompts/office-icons-v1.md) |
 | atlases/cleanup-profiles-v1.png | 2172×724，3×1 | 轻度羽毛、中度缓存整理、重度芯片清扫；三格已接入清理档位 | [cleanup-profiles-v1](prompts/cleanup-profiles-v1.md) |
 | atlases/save-local-v1.png | 1254×1254，1×1 | 专用玻璃软盘图标，用于诊断报告本地保存 | [save-local-v1](prompts/save-local-v1.md) |
+| atlases/navigation-glass-v1.png | 1774×887，4×2 | 同一玻璃材质的监测/宠物/设备/常规/清理/历史/计时/报告；八格已替换对应运行图片 | [navigation-glass-v1](prompts/navigation-glass-v1.md) |
 
 原图均保留，不覆盖。新增时递增版本并保存当次完整提示词与用途。原 assets/branding 保留；当前品牌/托盘使用玻璃星球，宠物继续使用 assets/pets 图集。
 
 ## 切图清单与确定性规则
 
-[精确清单](sprites.json) 为构建入口，[Rust 切图工具](../../scripts/visual_assets.rs) 由 build.rs 调用。当前处理 56 格，包含两个停用的 tools-draft/report-draft；有效对象 54 个，背景与概念图另计。未接入的办公素材只生成开发产物，不链接进应用。
+[精确清单](sprites.json) 为构建入口，[Rust 切图工具](../../scripts/visual_assets.rs) 由 build.rs 调用。当前处理 64 格，包含两个停用的 tools-draft/report-draft；可检查对象 62 个，背景与概念图另计。旧的八项导航仍保留开发切片，仅新版玻璃图进入运行；未接入的办公素材只生成开发产物，不链接进应用。
 
 - 按行从左到右。功能：监测、猫、芯片、滑杆；清扫、历史、计时、便签；资源、办公、工具草稿、截图；剪贴板、启动器、报告草稿、会议。
 - 控制：设置、固定、取消固定、详情；精简、完整、上、下；关闭、确认、加、减；最小化、最大化、播放、暂停。
@@ -41,7 +42,7 @@
 
 缩放采用预乘 alpha 后 Lanczos3 再还原，避免黑边。功能/控制/办公输出 64×64，螺旋 128×128，背景 768×512；品牌另输出 32/64。每格验证非空、透明留白和边缘；当前运行素材未通过即阻止构建。原工具/报告草稿保留为 needs-review，不能加入 runtime。
 
-构建目录 OUT_DIR 生成 artwork-manifest.json（实际边界、主体范围、尺寸、剔除像素、质量、是否运行）、artwork-preview.png（32/20像素接触表）、art-*.png/rgba。这些生成产物不提交；原图、清单及工具提交。测试覆盖断开的暂停笔画、抗锯齿、孤立杂点、白图标缩放及真实 GDI alpha 混合。
+构建目录 OUT_DIR 生成 artwork-manifest.json（实际边界、主体范围、尺寸、剔除像素、质量、是否运行）、artwork-preview.png（32/20像素接触表，按实际切片数调整高度）、art-*.png/rgba。这些生成产物不提交；原图、清单及工具提交。测试覆盖断开的暂停笔画、抗锯齿、孤立杂点、白图标缩放及真实 GDI alpha 混合。
 
 ## 运行预算与用途
 

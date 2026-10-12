@@ -255,7 +255,9 @@ fn resize_alpha(source: &RgbaImage, width: u32, height: u32) -> RgbaImage {
 }
 
 fn contact_sheet(out: &Path, images: &BTreeMap<String, RgbaImage>) {
-    let mut sheet = RgbaImage::from_pixel(640, 480, Rgba([18, 27, 38, 255]));
+    let count = images.keys().filter(|name| *name != "workspace").count() as u32;
+    let mut sheet =
+        RgbaImage::from_pixel(640, count.div_ceil(8).max(1) * 80, Rgba([18, 27, 38, 255]));
     let mut index = 0;
     for (name, image) in images {
         if name == "workspace" {

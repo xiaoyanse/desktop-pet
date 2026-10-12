@@ -14,7 +14,7 @@ use crate::{
 use eframe::egui::{self, Color32, RichText};
 
 pub fn empty(ui: &mut egui::Ui) {
-    theme::glass_frame().show(ui, |ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         let (r, _) = ui.allocate_exact_size(egui::Vec2::splat(72.0), egui::Sense::hover());
         icons::draw(ui.painter(), r, Icon::Report, Color32::WHITE);
@@ -58,7 +58,7 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, document: &Document) {
     });
     ui.add_space(10.0);
     if page.text_view {
-        theme::glass_frame().show(ui, |ui| {
+        theme::glass_panel(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.label(
                 RichText::new("复制和保存的内容与此处一致，文本只读。")
@@ -81,23 +81,41 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, document: &Document) {
     runtime_card(ui, page, &document.report);
 }
 fn overview(ui: &mut egui::Ui, report: &Report) {
-    theme::glass_frame().show(ui,|ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.label(RichText::new("资源快照").size(16.0).strong());
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            let width = (ui.available_width()-24.0)/4.0;
-            for metric in [Metric::Cpu,Metric::Memory,Metric::Paged,Metric::Nonpaged] {
-                ui.allocate_ui_with_layout(egui::vec2(width,55.0),egui::Layout::top_down(egui::Align::Min),|ui| {
-                    ui.set_min_width(width);
-                    ui.label(RichText::new(metric.label()).size(12.0).color(theme::MUTED));
-                    let value = report.resources.iter().find(|r| r.0==metric).map_or("未知",|r| r.1.as_str());
-                    ui.label(RichText::new(value).size(19.0).strong());
-                });
+            let width = (ui.available_width() - 24.0) / 4.0;
+            for metric in [Metric::Cpu, Metric::Memory, Metric::Paged, Metric::Nonpaged] {
+                ui.allocate_ui_with_layout(
+                    egui::vec2(width, 55.0),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        ui.set_min_width(width);
+                        ui.label(RichText::new(metric.label()).size(12.0).color(theme::MUTED));
+                        let value = report
+                            .resources
+                            .iter()
+                            .find(|r| r.0 == metric)
+                            .map_or("未知", |r| r.1.as_str());
+                        ui.label(RichText::new(value).size(19.0).strong());
+                    },
+                );
             }
         });
         ui.add_space(8.0);
-        ui.label(RichText::new(format!("{} 个进程 · Node {} · Python {} · {} 项 CPU/内存不可读取",report.enumerated,report.runtime_count("Node"),report.runtime_count("Python"),report.unreadable)).size(12.0).color(theme::ACCENT));
+        ui.label(
+            RichText::new(format!(
+                "{} 个进程 · Node {} · Python {} · {} 项 CPU/内存不可读取",
+                report.enumerated,
+                report.runtime_count("Node"),
+                report.runtime_count("Python"),
+                report.unreadable
+            ))
+            .size(12.0)
+            .color(theme::ACCENT),
+        );
         egui::CollapsingHeader::new("全部资源读数与数据口径").show(ui,|ui| {
             egui::Grid::new("report-resources").spacing(egui::vec2(30.0,8.0)).show(ui,|ui| {
                 for (metric,value) in &report.resources {ui.label(metric.label());ui.label(value);ui.end_row();}
@@ -108,7 +126,7 @@ fn overview(ui: &mut egui::Ui, report: &Report) {
     ui.add_space(12.0);
 }
 fn runtime_card(ui: &mut egui::Ui, page: &mut Page, report: &Report) {
-    theme::glass_frame().show(ui, |ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         let rows = &report.runtimes;
         ui.label(
@@ -167,7 +185,7 @@ fn runtime_card(ui: &mut egui::Ui, page: &mut Page, report: &Report) {
     });
 }
 fn process_card(ui: &mut egui::Ui, title: &str, rows: &[Process]) {
-    theme::glass_frame().show(ui, |ui| {
+    theme::glass_panel(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.label(RichText::new(title).size(16.0).strong());
         ui.add_space(8.0);
