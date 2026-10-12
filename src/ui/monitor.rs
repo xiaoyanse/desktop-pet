@@ -57,6 +57,7 @@ impl MonitorApp {
         if let Some(source) = dependencies.font {
             super::common::fonts::install(&ctx, source);
         } else {
+            super::common::fonts::configure_atlas(&ctx);
             message = "未找到中文字体，请安装微软雅黑或黑体后重新打开".into();
         }
         let hwnd = cc
@@ -356,6 +357,11 @@ impl MonitorApp {
     }
 }
 impl eframe::App for MonitorApp {
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        if let Some(maximum) = raw_input.max_texture_side {
+            raw_input.max_texture_side = Some(maximum.min(super::common::fonts::MAX_ATLAS_SIDE));
+        }
+    }
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         [0.0; 4]
     }

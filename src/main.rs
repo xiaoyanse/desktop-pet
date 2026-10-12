@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod application;
 mod assets;
+mod bootstrap;
 mod domain;
 mod infrastructure;
 #[cfg(test)]
@@ -87,6 +88,15 @@ fn main() {
         return;
     }
     let open_settings = args.iter().any(|a| a == "--settings");
+    let resource_probe = if let Some(index) = args.iter().position(|a| a == "--ui-resource-probe") {
+        let Some(path) = args.get(index + 1).filter(|path| !path.starts_with("--")) else {
+            native::message("开发资源探针需要一个尚不存在的输出文件路径");
+            return;
+        };
+        Some(std::path::PathBuf::from(path))
+    } else {
+        None
+    };
     let Some(_instance) = native::single_instance(open_settings) else {
         return;
     };
@@ -131,6 +141,9 @@ fn main() {
         "DesktopMeter",
         options,
         Box::new(move |cc| {
+            if let Some(path) = resource_probe {
+                bootstrap::resource_probe::install(&cc.egui_ctx, &path)?;
+            }
             let mut app = ui::monitor::MonitorApp::new(cc, config, warning, dependencies);
             if open_settings {
                 app.open_settings();
