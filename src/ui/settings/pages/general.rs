@@ -8,8 +8,18 @@ use eframe::egui;
 pub fn show(ui: &mut egui::Ui, config: &mut Config, message: &mut String, services: &Services) {
     section(ui, "刷新", |ui| {
         ui.horizontal(|ui| {
+            let width = (ui.available_width().min(320.0) - 16.0) / 3.0;
             for seconds in [1, 2, 5] {
-                ui.radio_value(&mut config.seconds, seconds, format!("{seconds} 秒"));
+                if widgets::tab(
+                    ui,
+                    &format!("{seconds} 秒"),
+                    config.seconds == seconds,
+                    width,
+                )
+                .clicked()
+                {
+                    config.seconds = seconds;
+                }
             }
         });
         ui.weak("建议 2 秒；5 秒进一步减少常驻开销。");

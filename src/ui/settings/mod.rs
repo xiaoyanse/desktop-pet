@@ -67,8 +67,23 @@ impl Settings {
                     .frame(egui::Frame::new().inner_margin(28))
                     .show(ctx, |ui| {
                         navigation::header(ui, self.tab, config, snapshot);
+                        if !message.is_empty() {
+                            ui.label(
+                                RichText::new(message.as_str())
+                                    .size(12.0)
+                                    .color(Color32::from_rgb(248, 200, 82)),
+                            );
+                            ui.add_space(12.0);
+                        }
                         if self.tab == 1 {
                             pages::appearance::show(ui, config, &mut self.pets, snapshot);
+                        } else if self.tab == 4 {
+                            cleanup_page::show(
+                                ui,
+                                config,
+                                &mut services.cleaner,
+                                &mut self.confirm_clean,
+                            );
                         } else {
                             egui::ScrollArea::vertical()
                                 .id_salt(("settings-scroll", self.tab))
@@ -82,22 +97,8 @@ impl Settings {
                                     ),
                                     2 => pages::devices::show(ui, config, snapshot),
                                     3 => pages::general::show(ui, config, message, services),
-                                    4 => cleanup_page::show(
-                                        ui,
-                                        config,
-                                        &mut services.cleaner,
-                                        &mut self.confirm_clean,
-                                    ),
                                     _ => cleanup_page::history(ui, &services.cleaner),
                                 });
-                        }
-                        if !message.is_empty() {
-                            ui.add_space(12.0);
-                            ui.label(
-                                RichText::new(message.as_str())
-                                    .size(12.0)
-                                    .color(Color32::from_rgb(248, 200, 82)),
-                            );
                         }
                     });
                 window_chrome::resize(ctx);

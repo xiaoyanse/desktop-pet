@@ -1,0 +1,7 @@
+# 清理档位图像 v1
+
+用途：清理中心轻度、中度、重度三张档位卡的独立图像。内置 image_gen，透明背景；3×1 图集，按整数比例边界切片。不得把图像装饰当成释放容量或速度承诺。
+
+## 完整提示词
+
+Create ONE transparent PNG icon atlas for a premium Windows desktop work assistant. A single horizontal row of THREE equal cells, strict 3 columns x 1 row. No text, letters, numbers, captions, cell dividers, backdrop, ground plane, sparkles, particles, distant haze or glow. Each object is fully contained at the exact center of its own cell with at least 20 percent transparent padding on every side. Render small polished product illustrations, softly sculpted pearl porcelain, muted jade and smoked blue translucent glass, gentle champagne metal trims. Consistent frontal three-quarter orthographic perspective, soft studio light, clean silhouettes, readable at 40 to 56 pixels, restrained detail, matching a smoky blue frosted desktop UI. LEFT: a jade feather resting beside one small pearl memory tile, a gentle low-impact cache cleanup metaphor. MIDDLE: three stacked translucent smoked-blue memory/cache tiles with a tidy small jade circular recycling arrow, a balanced cache organization metaphor. RIGHT: a small pearl memory chip with a jade cleaning brush and one muted amber accent, stronger manual memory cleanup metaphor, do not depict danger or a rocket. Preserve real transparency, zero decorative fragments in the empty area, no icon touches another cell. This is a production atlas to cut into three independent UI illustrations.

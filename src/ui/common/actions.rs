@@ -45,12 +45,44 @@ pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egu
     response
 }
 
-pub fn secondary(ui: &mut egui::Ui, label: &str) -> egui::Response {
-    ui.add(
-        egui::Button::new(label)
+pub fn secondary(ui: &mut egui::Ui, icon: Icon, label: &str) -> egui::Response {
+    let text = ui.painter().layout_no_wrap(
+        label.to_owned(),
+        egui::FontId::proportional(13.0),
+        if ui.is_enabled() {
+            theme::TEXT
+        } else {
+            theme::MUTED
+        },
+    );
+    let width = (text.size().x + 50.0).max(110.0).min(ui.available_width());
+    let response = ui.add(
+        egui::Button::new("")
             .corner_radius(8)
-            .min_size(egui::vec2(110.0, 36.0)),
-    )
+            .min_size(egui::vec2(width, 36.0)),
+    );
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
+    });
+    icons::draw(
+        ui.painter(),
+        egui::Rect::from_center_size(
+            response.rect.left_center() + egui::vec2(20.0, 0.0),
+            egui::Vec2::splat(18.0),
+        ),
+        icon,
+        if ui.is_enabled() {
+            Color32::WHITE
+        } else {
+            Color32::from_white_alpha(75)
+        },
+    );
+    ui.painter().with_clip_rect(response.rect).galley(
+        response.rect.left_center() + egui::vec2(38.0, -text.size().y * 0.5),
+        text,
+        theme::TEXT,
+    );
+    response
 }
 
 #[cfg(test)]

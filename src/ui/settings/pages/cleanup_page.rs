@@ -20,6 +20,51 @@ pub fn show(
     service: &mut CleanupService,
     confirm: &mut Review,
 ) {
+    let body_height = (ui.available_height() - 100.0).max(80.0);
+    egui::ScrollArea::vertical()
+        .id_salt("cleanup-options")
+        .max_height(body_height)
+        .auto_shrink([false, false])
+        .show(ui, |ui| options(ui, config, service, confirm));
+    ui.add_space(12.0);
+    egui::Frame::new()
+        .fill(Color32::from_rgba_unmultiplied(20, 36, 47, 160))
+        .corner_radius(14)
+        .inner_margin(10)
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(
+                RichText::new(format!(
+                    "本次清单 · {} 项操作",
+                    config.cleanup.operations.len()
+                ))
+                .size(12.0)
+                .color(theme::MUTED),
+            );
+            let pending = confirm.operations().is_some();
+            if actions::primary(
+                ui,
+                Icon::Clean,
+                if service.busy() {
+                    "正在处理…"
+                } else if pending {
+                    "等待确认"
+                } else {
+                    "清理一次"
+                },
+                !service.busy() && !pending && !config.cleanup.operations.is_empty(),
+            )
+            .clicked()
+            {
+                confirm.begin(&config.cleanup);
+            }
+        });
+    if let Some(request) = cleanup_choice::modal(ui.ctx(), confirm, !service.busy()) {
+        service.start(&request, false);
+    }
+}
+
+fn options(ui: &mut egui::Ui, config: &mut Config, service: &CleanupService, confirm: &mut Review) {
     section(ui, "当前内存", |ui| {
         if let Some(status) = &service.status {
             ui.columns(3, |columns| {
@@ -63,28 +108,6 @@ pub fn show(
         }
         ui.add_space(8.0);
         ui.weak("轻度默认只清 1 项，优先减少对工作的干扰。档位不保证释放容量。");
-        ui.add_space(10.0);
-        let beginning = confirm.operations().is_none()
-            && actions::primary(
-                ui,
-                Icon::Clean,
-                if service.busy() {
-                    "正在处理…"
-                } else {
-                    "清理一次"
-                },
-                !service.busy() && !config.cleanup.operations.is_empty(),
-            )
-            .clicked();
-        if beginning {
-            confirm.begin(&config.cleanup);
-        }
-        if let Some(request) = cleanup_choice::review(ui, confirm, !service.busy()) {
-            service.start(&request, false);
-        }
-        if beginning {
-            ui.scroll_to_cursor(Some(egui::Align::BOTTOM));
-        }
         if !service.message.is_empty() {
             ui.add_space(8.0);
             ui.label(service.message.as_str());
@@ -165,7 +188,7 @@ fn expert(ui: &mut egui::Ui, config: &mut Config, confirm: &mut Review) {
     for op in Operation::ALL {
         ui.push_id(op, |ui| {
             let mut enabled = config.cleanup.operations.contains(&op);
-            if ui.checkbox(&mut enabled, op.label()).changed() {
+            if widgets::switch(ui, &mut enabled, op.label()).changed() {
                 confirm.cancel();
                 if enabled {
                     config.cleanup.operations.push(op);
@@ -265,6 +288,138 @@ pub fn history(ui: &mut egui::Ui, service: &CleanupService) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        domain::{
+            cleanup::{CleanupReport, MemoryStatus},
+            resources::Snapshot,
+        },
+        interfaces::{CleanupHistory, MemoryCleaner, Wake},
+    };
+
+    struct NoSideEffects;
+    impl MemoryCleaner for NoSideEffects {
+        fn request(
+            &self,
+            _: Vec<Operation>,
+            _: bool,
+            _: Wake,
+        ) -> std::sync::mpsc::Receiver<Result<CleanupReport, String>> {
+            panic!("opening the review must not execute cleanup");
+        }
+        fn elevated(&self) -> bool {
+            false
+        }
+        fn inspect(&self) -> Result<MemoryStatus, String> {
+            panic!("UI rendering must not inspect the backend");
+        }
+    }
+    impl CleanupHistory for NoSideEffects {
+        fn load(&self) -> Result<Vec<CleanupReport>, String> {
+            Ok(Vec::new())
+        }
+        fn save(&self, _: &[CleanupReport]) -> Result<(), String> {
+            panic!("UI rendering must not write cleanup history");
+        }
+    }
+
+    #[test]
+    fn primary_remains_visible_while_options_scroll_and_only_opens_review() {
+        for size in [egui::vec2(840.0, 600.0), egui::vec2(1040.0, 820.0)] {
+            let ctx = egui::Context::default();
+            theme::setup(&ctx);
+            let mut config = Config::default();
+            let before = serde_json::to_string(&config).unwrap();
+            let mut review = Review::default();
+            let mut service = CleanupService::new(
+                Box::new(NoSideEffects),
+                Box::new(NoSideEffects),
+                std::sync::Arc::new(|| {}),
+            );
+            service.status = Some(MemoryStatus {
+                total: 32 * 1073741824,
+                available: 3 * 1073741824,
+                load: 90,
+                ..Default::default()
+            });
+            let mut render = |ctx: &egui::Context| {
+                super::super::super::shell::window_chrome::show(ctx);
+                super::super::super::shell::navigation::navigation(ctx, 4, &config);
+                egui::CentralPanel::default()
+                    .frame(egui::Frame::new().inner_margin(28))
+                    .show(ctx, |ui| {
+                        super::super::super::shell::navigation::header(
+                            ui,
+                            4,
+                            &config,
+                            &Snapshot::default(),
+                        );
+                        show(ui, &mut config, &mut service, &mut review);
+                    });
+            };
+            let input = |events| egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                events,
+                ..Default::default()
+            };
+            let output = ctx.run(input(vec![]), &mut render);
+            let button_position = |output: &egui::FullOutput| {
+                output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| match &shape.shape {
+                        egui::Shape::Text(text) if text.galley.text() == "清理一次" => {
+                            let bounds = egui::Rect::from_min_size(text.pos, text.galley.size());
+                            assert!(shape.clip_rect.contains_rect(bounds));
+                            assert!(
+                                egui::Rect::from_min_size(egui::Pos2::ZERO, size)
+                                    .contains_rect(bounds)
+                            );
+                            Some(bounds.center())
+                        }
+                        _ => None,
+                    })
+                    .expect("primary action must be visible")
+            };
+            let pos = button_position(&output);
+            let output = ctx.run(
+                input(vec![
+                    egui::Event::PointerMoved(egui::pos2(500.0, 280.0)),
+                    egui::Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Point,
+                        delta: egui::vec2(0.0, -400.0),
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ]),
+                &mut render,
+            );
+            assert_eq!(
+                button_position(&output),
+                pos,
+                "scrolling options must not move the primary"
+            );
+            for pressed in [true, false] {
+                let _ = ctx.run(
+                    input(vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ]),
+                    &mut render,
+                );
+            }
+            assert_eq!(
+                review.operations(),
+                Some(config.cleanup.operations.as_slice())
+            );
+            assert!(!service.busy());
+            assert_eq!(serde_json::to_string(&config).unwrap(), before);
+        }
+    }
+
     #[test]
     fn cleanup_status_uses_configured_memory_thresholds_and_color_switch() {
         let mut config = Config::default();

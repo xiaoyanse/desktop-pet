@@ -21,9 +21,13 @@
     {
       "file": "atlases/functional-repairs-v1.png", "grid": [2, 1], "size": 64,
       "names": ["tools", "report"]
+    },
+    {
+      "file": "atlases/cleanup-profiles-v1.png", "grid": [3, 1], "size": 64,
+      "names": ["cleanup-light", "cleanup-medium", "cleanup-heavy"]
     }
   ],
-  "runtime": ["monitor", "appearance", "devices", "general", "clean", "history", "settings", "pin", "unpin", "details", "compact", "restore", "up", "down", "close", "check", "plus", "minus", "minimize", "maximize", "workspace"],
+  "runtime": ["monitor", "appearance", "devices", "general", "clean", "history", "settings", "pin", "unpin", "details", "compact", "restore", "up", "down", "close", "check", "plus", "minus", "minimize", "maximize", "cleanup-light", "cleanup-medium", "cleanup-heavy", "workspace"],
   "background": {"file": "workbench-material-v2.png", "name": "workspace", "size": [768, 512]},
   "brand": "monitor"
 }

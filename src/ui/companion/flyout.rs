@@ -196,7 +196,8 @@ impl Flyout {
                                             service.start(&request, false);
                                         }
                                         ui.add_space(6.0);
-                                        if actions::secondary(ui, "选择中度 / 重度").clicked()
+                                        if actions::secondary(ui, Icon::General, "选择中度 / 重度")
+                                            .clicked()
                                         {
                                             action = Some(Action::AdvancedClean);
                                         }
