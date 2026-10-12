@@ -2,7 +2,7 @@ use crate::infrastructure::windows::native;
 use std::cell::RefCell;
 use windows_sys::Win32::{
     Foundation::*,
-    Graphics::Gdi::*,
+    Graphics::{Dwm::DwmExtendFrameIntoClientArea, Gdi::*},
     UI::{HiDpi::GetDpiForWindow, WindowsAndMessaging::*},
 };
 
@@ -66,10 +66,21 @@ pub fn apply(regions: &[[f32; 4]], preview: bool) -> Result<(), String> {
                 return Err("无法组合快捷入口区域".into());
             }
         }
-        if SetWindowRgn(hwnd, union.0, 1) == 0 {
+        if SetWindowRgn(hwnd, union.0, 0) == 0 {
             return Err("无法应用快捷入口区域；已收起入口".into());
         }
         union.0 = std::ptr::null_mut();
+        // A window region can make untouched OpenGL pixels opaque without full-client DWM composition.
+        let margins = windows_sys::Win32::UI::Controls::MARGINS {
+            cxLeftWidth: -1,
+            cxRightWidth: -1,
+            cyTopHeight: -1,
+            cyBottomHeight: -1,
+        };
+        let result = DwmExtendFrameIntoClientArea(hwnd, &margins);
+        if result < 0 {
+            return Err(format!("快捷入口透明合成失败：0x{:08X}", result as u32));
+        }
         LAST.with(|last| *last.borrow_mut() = Some((hwnd as isize, bounds)));
         Ok(())
     }

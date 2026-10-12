@@ -137,7 +137,7 @@ mod tests {
     fn real_gdi_alpha_blending_preserves_transparent_corners_and_draws_the_icon() {
         let pixels = [45, 55, 65, 255].repeat(64 * 64);
         let target = Bitmap::new(std::ptr::null_mut(), [64, 64], &pixels).unwrap();
-        let source = assets::get("settings");
+        let source = assets::get("nav-general");
         let icon = Bitmap::new(target.dc, source.size, source.rgba).unwrap();
         assert!(icon.paint(target.dc, [0, 0, 64, 64], false));
         unsafe {

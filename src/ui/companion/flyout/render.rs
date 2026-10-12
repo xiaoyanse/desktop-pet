@@ -44,20 +44,23 @@ pub fn show(
     if content.review.operations().is_some() {
         let raw = layout.rect([35.0, 18.0, 512.0, 443.0]);
         ui.scope_builder(egui::UiBuilder::new().max_rect(rect(raw)), |ui| {
-            let frame = theme::glass_frame().fill(theme::SURFACE).show(ui, |ui| {
-                egui::ScrollArea::vertical()
-                    .max_height(ui.available_height())
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        if let Some(request) = cleanup_choice::review(
-                            ui,
-                            content.review,
-                            !content.services.cleaner.busy(),
-                        ) {
-                            content.services.cleaner.start(&request, false);
-                        }
-                    });
-            });
+            let frame = theme::glass_frame()
+                .shadow(egui::Shadow::NONE)
+                .fill(theme::SURFACE)
+                .show(ui, |ui| {
+                    egui::ScrollArea::vertical()
+                        .max_height(ui.available_height())
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| {
+                            if let Some(request) = cleanup_choice::review(
+                                ui,
+                                content.review,
+                                !content.services.cleaner.busy(),
+                            ) {
+                                content.services.cleaner.start(&request, false);
+                            }
+                        });
+                });
             let r = frame.response.rect;
             out.regions.push([r.left(), r.top(), r.right(), r.bottom()]);
         });
@@ -74,14 +77,24 @@ pub fn show(
             r.center() - egui::vec2(0.0, 7.0),
             egui::vec2(r.width(), r.width()),
         );
-        let visible_image = image_rect.shrink(image_rect.width() * 0.12);
+        let visible_image = image_rect;
         out.regions.push([
             visible_image.left(),
             visible_image.top(),
             visible_image.right(),
             visible_image.bottom(),
         ]);
-        let response = ui.interact(r, ui.id().with(group.index()), egui::Sense::click());
+        let moving = content.config.pet_animation
+            && now.saturating_sub(state.opened) < Duration::from_millis(250);
+        let response = ui.interact(
+            r,
+            ui.id().with(group.index()),
+            if moving {
+                egui::Sense::hover()
+            } else {
+                egui::Sense::click()
+            },
+        );
         response.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::Button, true, group.label())
         });
@@ -140,27 +153,22 @@ pub fn show(
         }
     }
     if let Some(group) = state.group {
-        let progress = motion(
-            0,
-            now.saturating_sub(state.selected_at),
-            content.config.pet_animation,
-        );
-        let center = rect(layout.group(group, Duration::from_secs(1), false)).center();
         for (index, raw) in components::rects(group).iter().enumerate() {
-            let final_rect = rect(layout.rect(*raw));
-            let end = final_rect.center();
-            let angle = 0.25 * (1.0 - progress);
-            let delta = end - center;
-            let position = center
-                + egui::vec2(
-                    delta.x * angle.cos() - delta.y * angle.sin(),
-                    delta.x * angle.sin() + delta.y * angle.cos(),
-                ) * progress;
-            let r = egui::Rect::from_center_size(position, final_rect.size());
+            let age = now.saturating_sub(state.selected_at);
+            let r = rect(layout.component(group, index, *raw, age, content.config.pet_animation));
             ui.scope_builder(egui::UiBuilder::new().max_rect(r), |ui| {
-                let frame = theme::glass_frame().fill(theme::SURFACE).show(ui, |ui| {
-                    components::show(ui, group, index, content, &mut out.action);
-                });
+                ui.multiply_opacity(
+                    motion(index, age, content.config.pet_animation).clamp(0.0, 1.0),
+                );
+                if state.animating(now, content.config.pet_animation) {
+                    ui.disable();
+                }
+                let frame = theme::glass_frame()
+                    .shadow(egui::Shadow::NONE)
+                    .fill(theme::SURFACE)
+                    .show(ui, |ui| {
+                        components::show(ui, group, index, content, &mut out.action);
+                    });
                 let r = frame.response.rect;
                 out.regions.push([r.left(), r.top(), r.right(), r.bottom()]);
             });

@@ -17,6 +17,9 @@ pub fn toolbar(
     locked: bool,
     expanded: bool,
 ) -> (Option<Action>, Option<&'static str>) {
+    if locked {
+        return (None, None);
+    }
     let visible = ctx.input(|i| i.pointer.hover_pos().is_some());
     let mut action = None;
     let mut tip = None;
@@ -28,6 +31,7 @@ pub fn toolbar(
         .show(ctx, |ui| {
             if !visible {
                 ui.set_opacity(0.0);
+                ui.disable();
             }
             egui::Frame::new()
                 .fill(Color32::from_rgb(28, 37, 48))
@@ -93,6 +97,31 @@ pub fn toolbar(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn locked_toolbar_draws_no_buttons_and_cannot_emit_an_action() {
+        let ctx = egui::Context::default();
+        for compact in [false, true] {
+            let mut result = None;
+            let output = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(240.0, 112.0),
+                    )),
+                    events: vec![egui::Event::PointerMoved(egui::pos2(45.0, 20.0))],
+                    ..Default::default()
+                },
+                |ctx| {
+                    result = Some(toolbar(ctx, compact, true, false));
+                },
+            );
+            assert_eq!(result, Some((None, None)));
+            assert!(
+                output.shapes.is_empty(),
+                "fixed/passthrough must remove the toolbar, not just dim it"
+            );
+        }
+    }
     fn frame(ctx: &egui::Context, events: Vec<egui::Event>, compact: bool) -> Option<Action> {
         let mut action = None;
         let _ = ctx.run(

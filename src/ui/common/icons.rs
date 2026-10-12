@@ -35,7 +35,7 @@ pub enum Icon {
 impl Icon {
     pub fn asset(self) -> &'static str {
         match self {
-            Self::Settings => "settings",
+            Self::Settings => "nav-general",
             Self::Pin => "pin",
             Self::Unpin => "unpin",
             Self::Details => "details",

@@ -53,7 +53,7 @@ impl Sprites {
         snapshot: &Snapshot,
         cursor: Option<[f32; 2]>,
     ) -> (bool, bool) {
-        let hovering = ctx.input(|i| i.pointer.hover_pos().is_some());
+        let hovering = hovered(cursor);
         let time = self
             .started
             .get_or_insert_with(Instant::now)
@@ -215,6 +215,9 @@ pub fn badge(config: &Config, snapshot: &Snapshot) -> (String, Color32) {
         panel::tint(panel::level(item), config.status_colors, color),
     )
 }
+fn hovered(cursor: Option<[f32; 2]>) -> bool {
+    cursor.is_some_and(|p| (0.0..SIZE.x).contains(&p[0]) && (0.0..SIZE.y).contains(&p[1]))
+}
 fn animation(seconds: f64, enabled: bool, hovering: bool) -> (bool, Option<Duration>) {
     if !enabled {
         return (false, None);
@@ -233,6 +236,22 @@ fn animation(seconds: f64, enabled: bool, hovering: bool) -> (bool, Option<Durat
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_hover_covers_the_entire_pet_without_egui_events_or_animation() {
+        assert!(!hovered(None));
+        for p in [[0.0, 0.0], [36.0, 25.0], [71.9, 83.9]] {
+            assert!(hovered(Some(p)));
+        }
+        for p in [
+            [72.0, 25.0],
+            [-0.1, 25.0],
+            [36.0, 84.0],
+            [36.0, -0.1],
+            [f32::NAN, 10.0],
+        ] {
+            assert!(!hovered(Some(p)));
+        }
+    }
     #[test]
     fn idle_animation_is_scheduled_at_transitions_and_can_be_disabled() {
         assert_eq!(animation(1.0, false, true), (false, None));

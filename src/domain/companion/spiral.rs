@@ -87,23 +87,66 @@ impl Layout {
     }
     pub fn group(&self, group: Group, age: Duration, animated: bool) -> Rect {
         let [x, y] = [[95.0, 110.0], [158.0, 230.0], [104.0, 365.0]][group.index()];
-        let final_rect = self.rect([x - 48.0, y - 48.0, x + 48.0, y + 62.0]);
+        let final_rect = [x - 48.0, y - 48.0, x + 48.0, y + 62.0];
         let t = motion(group.index(), age, animated);
         let end = [
             (final_rect[0] + final_rect[2]) * 0.5,
             (final_rect[1] + final_rect[3]) * 0.5,
         ];
-        let dx = end[0] - self.anchor[0];
-        let dy = end[1] - self.anchor[1];
-        let angle = (-0.65 * (1.0 - t)).copysign(if self.left { -1.0 } else { 1.0 });
+        let anchor_y = self.anchor[1] / self.scale;
+        let anchor = [
+            0.0,
+            if self.flip {
+                460.0 - anchor_y
+            } else {
+                anchor_y
+            },
+        ];
+        let dx = end[0] - anchor[0];
+        let dy = end[1] - anchor[1];
+        let angle = -0.65 * (1.0 - t);
         let radius = 0.35 + 0.65 * t;
         let center = [
-            self.anchor[0] + (dx * angle.cos() - dy * angle.sin()) * radius,
-            self.anchor[1] + (dx * angle.sin() + dy * angle.cos()) * radius,
+            anchor[0] + (dx * angle.cos() - dy * angle.sin()) * radius,
+            anchor[1] + (dx * angle.sin() + dy * angle.cos()) * radius,
         ];
         let w = (final_rect[2] - final_rect[0]) * 0.5;
         let h = (final_rect[3] - final_rect[1]) * 0.5;
-        [center[0] - w, center[1] - h, center[0] + w, center[1] + h]
+        self.fit_rect(self.rect([center[0] - w, center[1] - h, center[0] + w, center[1] + h]))
+    }
+    pub fn component(
+        &self,
+        group: Group,
+        index: usize,
+        raw: Rect,
+        age: Duration,
+        animated: bool,
+    ) -> Rect {
+        let progress = motion(index, age, animated);
+        let center = [[95.0, 117.0], [158.0, 237.0], [104.0, 372.0]][group.index()];
+        let end = [(raw[0] + raw[2]) * 0.5, (raw[1] + raw[3]) * 0.5];
+        let dx = end[0] - center[0];
+        let dy = end[1] - center[1];
+        let distance = dx.hypot(dy).max(1.0);
+        let angle = -0.35 * (1.0 - progress);
+        let travel = 24.0 * (1.0 - progress) / distance;
+        let shift = [
+            (dx * angle.cos() - dy * angle.sin()) * travel,
+            (dx * angle.sin() + dy * angle.cos()) * travel,
+        ];
+        self.fit_rect(self.rect([
+            raw[0] - shift[0],
+            raw[1] - shift[1],
+            raw[2] - shift[0],
+            raw[3] - shift[1],
+        ]))
+    }
+    pub fn fit_rect(&self, rect: Rect) -> Rect {
+        let width = (rect[2] - rect[0]).min(self.size[0]).max(0.0);
+        let height = (rect[3] - rect[1]).min(self.size[1]).max(0.0);
+        let x = rect[0].clamp(0.0, self.size[0] - width);
+        let y = rect[1].clamp(0.0, self.size[1] - height);
+        [x, y, x + width, y + height]
     }
     pub fn contains(&self, screen: [f32; 2], rect: Rect) -> bool {
         contains(
@@ -149,10 +192,13 @@ impl MenuState {
         self.candidate = None;
         self.suppressed = true;
     }
-    pub fn update(&mut self, now: Duration, trigger: bool, inside: bool, pinned: bool) {
+    pub fn observe_trigger(&mut self, trigger: bool) {
         if !trigger {
             self.suppressed = false;
         }
+    }
+    pub fn update(&mut self, now: Duration, trigger: bool, inside: bool, pinned: bool) {
+        self.observe_trigger(trigger);
         if !self.active && trigger && !self.suppressed {
             self.open(now);
         }
@@ -211,6 +257,55 @@ impl MenuState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn every_animation_frame_mirrors_both_levels_without_crossing_the_work_area() {
+        let geometry = |frame| DesktopGeometry {
+            frame,
+            work_area: [0.0, 0.0, 1920.0, 1040.0],
+        };
+        let layouts = [
+            Layout::new(geometry([0.0, 478.0, 72.0, 562.0])),
+            Layout::new(geometry([1848.0, 478.0, 1920.0, 562.0])),
+            Layout::new(geometry([0.0, 0.0, 72.0, 84.0])),
+            Layout::new(geometry([0.0, 956.0, 72.0, 1040.0])),
+        ];
+        for ms in 0..=250 {
+            for group in Group::ALL {
+                let age = Duration::from_millis(ms);
+                let a = layouts[0].group(group, age, true);
+                let b = layouts[1].group(group, age, true);
+                assert!((a[0] - (520.0 - b[2])).abs() < 0.01);
+                assert!((a[1] - b[1]).abs() < 0.01);
+                let a = layouts[2].group(group, age, true);
+                let b = layouts[3].group(group, age, true);
+                assert!((a[1] - (460.0 - b[3])).abs() < 0.01);
+                for (index, raw) in [
+                    [250.0, 16.0, 510.0, 136.0],
+                    [270.0, 140.0, 510.0, 344.0],
+                    [265.0, 350.0, 510.0, 458.0],
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    let a = layouts[0].component(group, index, raw, age, true);
+                    let b = layouts[1].component(group, index, raw, age, true);
+                    assert!((a[0] - (520.0 - b[2])).abs() < 0.01);
+                    let a = layouts[2].component(group, index, raw, age, true);
+                    let b = layouts[3].component(group, index, raw, age, true);
+                    assert!((a[1] - (460.0 - b[3])).abs() < 0.01);
+                    for layout in &layouts {
+                        let r = layout.component(group, index, raw, age, true);
+                        assert!(
+                            r[0] >= 0.0
+                                && r[1] >= 0.0
+                                && r[2] <= layout.size[0]
+                                && r[3] <= layout.size[1]
+                        );
+                    }
+                }
+            }
+        }
+    }
     #[test]
     fn hover_intent_gaps_close_and_explicit_close_does_not_reopen_under_mouse() {
         let mut s = MenuState::default();

@@ -123,6 +123,15 @@ impl MonitorApp {
         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
         ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
     }
+    fn lock(&mut self, ctx: &egui::Context, passthrough: bool) {
+        self.locked = true;
+        self.pet_hover = false;
+        self.hover_quick = false;
+        self.flyout.dismiss();
+        self.services.desktop.tooltip("", false);
+        ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(passthrough));
+        ctx.request_repaint();
+    }
     fn receive(&mut self, ctx: &egui::Context) {
         {
             let actions = self.services.desktop.actions();
@@ -135,8 +144,7 @@ impl MonitorApp {
                         }
                     }
                     Action::Passthrough => {
-                        self.locked = true;
-                        ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(true));
+                        self.lock(ctx, true);
                     }
                     Action::Settings => {
                         self.unlock(ctx);
@@ -224,7 +232,8 @@ impl MonitorApp {
             },
         );
         if self.config.pet_mode {
-            let cursor = if self.config.pet_animation {
+            let cursor = if !self.locked {
+                ctx.request_repaint_after(Duration::from_millis(200));
                 self.services.desktop.cursor()
             } else {
                 None
@@ -332,7 +341,7 @@ impl MonitorApp {
                 if self.locked {
                     self.unlock(ctx);
                 } else {
-                    self.locked = true;
+                    self.lock(ctx, false);
                 }
             }
             Some(Action::Details) => {

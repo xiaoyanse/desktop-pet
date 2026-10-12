@@ -26,7 +26,7 @@ impl Glyph {
     fn asset(self) -> &'static str {
         match self {
             Self::Restore => "restore",
-            Self::Settings => "settings",
+            Self::Settings => "nav-general",
             Self::Compact => "compact",
             Self::Memory => "nav-clean",
             Self::Cursor => "unpin",

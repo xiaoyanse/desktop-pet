@@ -1,4 +1,6 @@
 mod components;
+#[cfg(test)]
+mod lifecycle_tests;
 mod render;
 #[cfg(test)]
 mod tests;
@@ -61,6 +63,13 @@ impl Flyout {
     pub fn active(&self) -> bool {
         self.state.active
     }
+    pub fn dismiss(&mut self) {
+        self.state.close();
+        self.pinned = false;
+        self.preview = false;
+        self.last_regions.clear();
+        self.review.cancel();
+    }
     pub fn settings_closed(&mut self, open: bool) {
         if self.preview && !open {
             self.state.close();
@@ -80,6 +89,7 @@ impl Flyout {
         trigger: bool,
     ) -> Option<Action> {
         let now = self.started.elapsed();
+        self.state.observe_trigger(trigger && !self.preview);
         let geometry = geometry?;
         let layout = Layout::new(geometry);
         let screen_cursor = services
@@ -99,7 +109,10 @@ impl Flyout {
             self.last_regions.clear();
             return None;
         }
-        if self.review.operations().is_none() {
+        if self.review.operations().is_none()
+            && (!config.pet_animation
+                || now.saturating_sub(self.state.opened) >= Duration::from_millis(250))
+        {
             let hovered = screen_cursor.and_then(|p| {
                 Group::ALL.into_iter().find(|g| {
                     layout.contains(
@@ -115,6 +128,14 @@ impl Flyout {
             self.state.hover(now, hovered, false);
         }
         let preview = self.preview;
+        let animating = self.state.animating(now, config.pet_animation);
+        let animation_region = [[0.0, 0.0, layout.size[0], layout.size[1]]];
+        if animating && let Err(error) = services.desktop.quick_regions(&animation_region, preview)
+        {
+            self.warning = Some(error);
+            self.dismiss();
+            return None;
+        }
         let mut output = render::Output::default();
         ctx.show_viewport_immediate(
             egui::ViewportId::from_hash_of(if preview {
@@ -167,21 +188,28 @@ impl Flyout {
         if output.toggle_pin {
             self.pinned = !self.pinned;
         }
-        if let Err(error) = services.desktop.quick_regions(&output.regions, preview) {
+        let native_regions = if animating {
+            &animation_region[..]
+        } else {
+            &output.regions
+        };
+        if let Err(error) = services.desktop.quick_regions(native_regions, preview) {
             self.warning = Some(error);
             output.close = true;
         }
         self.last_regions = output.regions;
         if output.close || output.action.is_some() {
-            self.review.cancel();
-            self.state.close();
-            self.pinned = false;
-            self.preview = false;
-            self.last_regions.clear();
-        } else if self.state.animating(now, config.pet_animation) {
+            self.dismiss();
+            ctx.request_repaint();
+        } else if animating {
             ctx.request_repaint_after(Duration::from_millis(16));
-        } else if let Some(delay) = self.state.next_input_check(now) {
-            ctx.request_repaint_after(delay);
+        } else {
+            ctx.request_repaint_after(
+                self.state
+                    .next_input_check(now)
+                    .unwrap_or(Duration::from_millis(50))
+                    .min(Duration::from_millis(50)),
+            );
         }
         output.action
     }
