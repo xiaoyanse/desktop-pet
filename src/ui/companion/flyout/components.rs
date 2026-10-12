@@ -4,6 +4,7 @@ use crate::{
         cleanup::{CleanupConfig, Operation},
         cleanup_profile::Profile,
         companion::spiral::{Group, Rect},
+        screenshot::Mode as CaptureMode,
         work_timer::{Mode, State, clock},
     },
     ui::{
@@ -28,12 +29,12 @@ pub fn rects(group: Group) -> &'static [Rect] {
         Group::Office => &[
             [250.0, 133.0, 510.0, 340.0],
             [270.0, 16.0, 510.0, 124.0],
-            [270.0, 350.0, 510.0, 458.0],
+            [270.0, 344.0, 510.0, 458.0],
         ],
         Group::Tools => &[
             [270.0, 16.0, 510.0, 136.0],
-            [270.0, 152.0, 510.0, 290.0],
-            [270.0, 310.0, 510.0, 458.0],
+            [270.0, 152.0, 510.0, 320.0],
+            [270.0, 336.0, 510.0, 458.0],
         ],
     }
 }
@@ -116,10 +117,48 @@ pub fn show(
                         .size(14.0)
                         .color(theme::ACCENT),
                 );
+                if icons::bare_button(ui, Icon::Settings, "会议设置与详情").clicked() {
+                    *action = Some(Action::Meeting);
+                }
             });
-            if actions::secondary(ui, Icon::Meeting, "打开会议辅助").clicked() {
-                *action = Some(Action::Meeting);
-            }
+            let meeting = &mut content.services.meeting;
+            let (icon, label) = match meeting.session.state {
+                State::Running => (Icon::Pause, "暂停会议"),
+                State::Paused => (Icon::Play, "继续会议"),
+                _ => (Icon::Meeting, "开始会议"),
+            };
+            ui.horizontal(|ui| {
+                let width = (ui.available_width() - 8.0) / 2.0;
+                ui.allocate_ui_with_layout(
+                    egui::vec2(width, 36.0),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        if actions::secondary(ui, icon, label).clicked() {
+                            let now = Instant::now();
+                            match meeting.session.state {
+                                State::Running => meeting.pause(now, &content.config.meeting),
+                                State::Paused => meeting.resume(now),
+                                _ => meeting.start(&content.config.meeting, now),
+                            }
+                        }
+                    },
+                );
+                ui.allocate_ui_with_layout(
+                    egui::vec2(width, 36.0),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        if ui
+                            .add_enabled_ui(meeting.session.active(), |ui| {
+                                actions::secondary(ui, Icon::Check, "结束")
+                            })
+                            .inner
+                            .clicked()
+                        {
+                            meeting.finish(Instant::now(), &content.config.meeting);
+                        }
+                    },
+                );
+            });
         }
         (Group::Tools, 0) => {
             ui.label(RichText::new("资源诊断报告").size(16.0).strong());
@@ -133,14 +172,49 @@ pub fn show(
             }
         }
         (Group::Tools, 1) => {
-            ui.label(RichText::new("屏幕工具").size(16.0).strong());
-            ui.label(
-                RichText::new("全屏 · 区域 · 自由 · 窗口")
-                    .size(12.0)
-                    .color(theme::MUTED),
-            );
-            if actions::secondary(ui, Icon::Screenshot, "截图与贴图").clicked() {
-                *action = Some(Action::Screenshot);
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("直接截图").size(16.0).strong());
+                if icons::bare_button(ui, Icon::Settings, "截图管理与上次批注").clicked() {
+                    *action = Some(Action::Screenshot);
+                }
+            });
+            ui.add_enabled_ui(!content.services.screenshot.busy(), |ui| {
+                for modes in CaptureMode::ALL.chunks(2) {
+                    ui.horizontal(|ui| {
+                        let width = (ui.available_width() - 8.0) / 2.0;
+                        for mode in modes {
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(width, 36.0),
+                                egui::Layout::top_down(egui::Align::Min),
+                                |ui| {
+                                    let icon = match mode {
+                                        CaptureMode::Fullscreen => Icon::Maximize,
+                                        CaptureMode::Rectangle => Icon::Compact,
+                                        CaptureMode::Freehand => Icon::Annotate,
+                                        CaptureMode::Window => Icon::Restore,
+                                    };
+                                    if actions::secondary(ui, icon, mode.label())
+                                        .on_hover_text(mode.description())
+                                        .clicked()
+                                    {
+                                        *action = Some(Action::Capture(*mode));
+                                    }
+                                },
+                            );
+                        }
+                    });
+                }
+            });
+            if !content.services.screenshot.message.is_empty() {
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(&content.services.screenshot.message)
+                            .size(11.0)
+                            .color(theme::MUTED),
+                    )
+                    .truncate(),
+                )
+                .on_hover_text(&content.services.screenshot.message);
             }
         }
         (Group::Tools, _) => {

@@ -49,7 +49,7 @@ impl Settings {
             Action::Screenshot => self.open_screenshot(),
             Action::Notes => self.open_office(crate::domain::office::Kind::Note),
             Action::Tasks => self.open_office(crate::domain::office::Kind::Task),
-            Action::Restore | Action::Compact => return false,
+            Action::Restore | Action::Compact | Action::Capture(_) => return false,
         }
         true
     }

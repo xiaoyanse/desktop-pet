@@ -26,6 +26,7 @@ pub enum Action {
     Timer,
     Report,
     Screenshot,
+    Capture(crate::domain::screenshot::Mode),
     Notes,
     Tasks,
     Meeting,

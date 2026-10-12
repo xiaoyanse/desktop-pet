@@ -47,8 +47,7 @@ pub struct MonitorApp {
     flyout: flyout::Flyout,
     hover_quick: bool,
     pet_hover: bool,
-    screenshot_pending: Option<(crate::domain::screenshot::Mode, Instant)>,
-    screenshot_hidden: bool,
+    capture_flow: screenshot::CaptureFlow,
     exit_after_office: bool,
 }
 impl MonitorApp {
@@ -109,8 +108,7 @@ impl MonitorApp {
             flyout: flyout::Flyout::default(),
             hover_quick: false,
             pet_hover: false,
-            screenshot_pending: None,
-            screenshot_hidden: false,
+            capture_flow: Default::default(),
             exit_after_office: false,
         }
     }
@@ -371,6 +369,7 @@ impl eframe::App for MonitorApp {
                 self.expanded = false;
                 self.configure();
             }
+            Some(flyout::Action::Capture(mode)) => self.begin_capture(ctx, mode),
             Some(action) => {
                 self.settings.open_from_pet(action);
             }

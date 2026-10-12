@@ -22,8 +22,8 @@ impl MonitorApp {
     }
     pub(super) fn receive_actions(&mut self, ctx: &egui::Context) {
         for action in self.services.desktop.actions() {
-            if self.screenshot_hidden && interrupts_capture(action) {
-                self.screenshot_pending = None;
+            if self.capture_flow.hidden && interrupts_capture(action) {
+                self.capture_flow.interrupt();
                 self.services.screenshot.cancel();
             }
             match action {

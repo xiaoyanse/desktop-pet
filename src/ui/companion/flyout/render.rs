@@ -164,6 +164,7 @@ pub fn show(
                     ui.disable();
                 }
                 let frame = theme::glass_frame()
+                    .inner_margin(if group == Group::Tools { 16 } else { 20 })
                     .shadow(egui::Shadow::NONE)
                     .fill(theme::SURFACE)
                     .show(ui, |ui| {

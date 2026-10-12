@@ -26,7 +26,11 @@ fn every_pet_tool_selects_its_real_page_and_requests_window_reveal() {
     assert!(settings.open && settings.reveal_requested);
     settings.open = false;
     settings.reveal_requested = false;
-    for action in [Action::Restore, Action::Compact] {
+    for action in [
+        Action::Restore,
+        Action::Compact,
+        Action::Capture(crate::domain::screenshot::Mode::Freehand),
+    ] {
         assert!(!settings.open_from_pet(action));
         assert!(!settings.open && !settings.reveal_requested);
     }

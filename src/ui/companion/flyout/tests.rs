@@ -201,10 +201,13 @@ fn edge_spiral_keeps_rendered_regions_and_action_labels_inside_its_viewport() {
                     "详细计时",
                     "打开诊断报告",
                     "打开设置",
-                    "截图与贴图",
+                    "全屏截图",
+                    "矩形区域",
+                    "自由形状",
+                    "识别窗口",
                     "便签",
                     "待办",
-                    "打开会议辅助",
+                    "开始会议",
                 ] {
                     for shape in &output.shapes {
                         if let Some(rect) = text_bounds(&shape.shape, label) {
@@ -363,6 +366,7 @@ fn mirrored_spiral_actions_reach_the_same_use_cases_at_all_four_corners() {
     ] {
         let ctx = egui::Context::default();
         crate::ui::common::theme::setup(&ctx);
+        crate::ui::install_test_font(&ctx, crate::infrastructure::windows::fonts::load().unwrap());
         let config = Config::default();
         let snapshot = Snapshot::default();
         let mut services = services();
@@ -400,7 +404,6 @@ fn mirrored_spiral_actions_reach_the_same_use_cases_at_all_four_corners() {
             ("便签", Action::Notes),
             ("待办", Action::Tasks),
             ("详细计时", Action::Timer),
-            ("打开会议辅助", Action::Meeting),
         ] {
             let output = click_layout(&ctx, &mut content, &state, label, &layout);
             assert_eq!(output.action, Some(action));
@@ -412,6 +415,19 @@ fn mirrored_spiral_actions_reach_the_same_use_cases_at_all_four_corners() {
         assert_eq!(content.services.timer.session.state, State::Running);
         click_layout(&ctx, &mut content, &state, "暂停计时", &layout);
         assert_eq!(content.services.timer.session.state, State::Paused);
+        for (label, expected) in [
+            ("开始会议", State::Running),
+            ("暂停会议", State::Paused),
+            ("继续会议", State::Running),
+            ("结束", State::Complete),
+        ] {
+            assert!(
+                click_layout(&ctx, &mut content, &state, label, &layout)
+                    .action
+                    .is_none()
+            );
+            assert_eq!(content.services.meeting.session.state, expected);
+        }
         state.hover(Duration::ZERO, Some(Group::Tools), true);
         assert_eq!(
             click_layout(&ctx, &mut content, &state, "打开诊断报告", &layout).action,
@@ -421,12 +437,14 @@ fn mirrored_spiral_actions_reach_the_same_use_cases_at_all_four_corners() {
             click_layout(&ctx, &mut content, &state, "打开设置", &layout).action,
             Some(Action::Settings)
         );
-        let output = click_layout(&ctx, &mut content, &state, "截图与贴图", &layout);
-        assert_eq!(output.action, Some(Action::Screenshot));
-        let mut settings = crate::ui::settings::Settings::default();
-        assert!(settings.open_from_pet(output.action.unwrap()));
-        assert!(settings.open);
-        assert!(!content.services.screenshot.busy());
+        for mode in crate::domain::screenshot::Mode::ALL {
+            let output = click_layout(&ctx, &mut content, &state, mode.label(), &layout);
+            assert_eq!(output.action, Some(Action::Capture(mode)));
+            let mut settings = crate::ui::settings::Settings::default();
+            assert!(!settings.open_from_pet(output.action.unwrap()));
+            assert!(!settings.open, "direct capture must not open settings");
+            assert!(!content.services.screenshot.busy());
+        }
     }
 }
 #[test]
