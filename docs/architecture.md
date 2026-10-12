@@ -74,3 +74,5 @@ UI 不导入 infrastructure，不直接读取设置文件或调用 Win32。后�
 `bootstrap/render_baseline` 为显式开发对照，必须与 `--ui-resource-probe` 一起使用，正常启动不构造它；不装配业务采样、系统字体、贴图/报告/清理/托盘。保持同一Glow与即时视口尺寸以测试极少内容下的后端峰值。实验根尺寸命令仅发送一次，新增真实输出回归防持续重绘。修正基线仍超原100 MB参考；普通生产路径没有替换。边界与候选判据见《渲染后端基线与调整方案》。
 
 软件候选在 `ui/rendering/software/` 处理框架网格、纹理、裁切和预乘alpha，`infrastructure/windows/presentation/` 只处理原生消息及DIB，不依赖egui；组合根 `bootstrap/software_experiment` 适配双方输入/输出。合成页面位于 `ui/development/`，只有显式参数启用，不装配采样/清理/报告/录音，不写用户配置；跨层字体与图像回归留在 `integration_tests`。大窗口全帧CPU绘制尚慢，候选未接完整业务，暂存为开发实验，继续功能开发。证据和限制见《原生软件绘制实验》。
+
+截图根视口生命周期位于 `ui/monitor/screenshot`：准备和捕获期间保持原生根窗口可见，但返回空透明画面、临时鼠标穿透，辅助窗口隐藏；否则 Windows 隐藏根窗口后停止 WM_PAINT，依赖同一更新循环的延迟捕获无法启动。交互模式单独记录，不把位置锁定误当鼠标穿透。托盘动作在 `ui/monitor/actions` 处理，恢复/退出动作取消准备或捕获，避免监视器入口继续膨胀。`bootstrap/screenshot_lifecycle` 仅显式开发参数启用，使用同一暂停/恢复命令和自有72×84 GL缓冲，保护线程只属于该探针；正常运行不创建保护线程、不读取GL缓冲、不写验证日志。回归脚本与原生证据见《截图生命周期与输入验收》。

@@ -3,12 +3,14 @@ use super::{
     companion::{flyout, pet},
     monitoring::{controls, details, surface},
 };
+mod actions;
 mod screenshot;
+pub(crate) use screenshot::restore_root as restore_screenshot_root;
+pub(crate) use screenshot::suspend_root as suspend_screenshot_root;
 mod work_timer;
 use crate::{
     application::{Dependencies, Services, monitoring::MonitorWorker},
     domain::{config::Config, resources::Snapshot},
-    interfaces::DesktopAction as Action,
     ui::{
         monitoring::panel::{self, Alerts, History},
         settings::Settings,
@@ -30,6 +32,7 @@ pub struct MonitorApp {
     settings: Settings,
     expanded: bool,
     locked: bool,
+    passthrough: bool,
     history: History,
     alerts: Alerts,
     message: String,
@@ -113,6 +116,7 @@ impl MonitorApp {
             settings: Settings::default(),
             expanded: false,
             locked: false,
+            passthrough: false,
             history: HashMap::new(),
             alerts: Alerts::default(),
             message,
@@ -131,48 +135,8 @@ impl MonitorApp {
         self.worker.configure(&self.config, self.expanded);
         self.dirty_at = Some(Instant::now());
     }
-    fn unlock(&mut self, ctx: &egui::Context) {
-        self.locked = false;
-        ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(false));
-        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-        ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-    }
-    fn lock(&mut self, ctx: &egui::Context, passthrough: bool) {
-        self.locked = true;
-        self.pet_hover = false;
-        self.hover_quick = false;
-        self.flyout.dismiss();
-        self.services.desktop.tooltip("", false);
-        ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(passthrough));
-        ctx.request_repaint();
-    }
     fn receive(&mut self, ctx: &egui::Context) {
-        {
-            let actions = self.services.desktop.actions();
-            for action in actions {
-                match action {
-                    Action::Unlock => {
-                        self.unlock(ctx);
-                        if self.config.compact || self.config.pet_mode {
-                            self.toggle_mode(ctx);
-                        }
-                    }
-                    Action::Passthrough => {
-                        self.lock(ctx, true);
-                    }
-                    Action::Settings => {
-                        self.unlock(ctx);
-                        self.settings.open = true;
-                    }
-                    Action::ToggleMode => self.toggle_mode(ctx),
-                    Action::Pet => self.toggle_pet(ctx),
-                    Action::PetReact => self.pets.react(false),
-                    Action::PetDrop => self.pets.react(true),
-                    Action::Cleanup => self.flyout.open(),
-                    Action::Exit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
-                }
-            }
-        }
+        self.receive_actions(ctx);
         if let Some(snapshot) = self.worker.take_sample() {
             let now = Instant::now();
             let rows = panel::rows(&self.config, &snapshot);

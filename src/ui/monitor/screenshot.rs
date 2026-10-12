@@ -2,6 +2,17 @@ use super::MonitorApp;
 use eframe::egui;
 use std::time::{Duration, Instant};
 
+pub(crate) fn suspend_root(ctx: &egui::Context) {
+    // A hidden Win32 root stops WM_PAINT; the same update loop must advance capture.
+    ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(true));
+}
+pub(crate) fn restore_root(ctx: &egui::Context, passthrough: bool) {
+    ctx.send_viewport_cmd(egui::ViewportCommand::MousePassthrough(passthrough));
+}
+
+#[cfg(test)]
+mod tests;
+
 impl MonitorApp {
     pub(super) fn screenshot_tick(&mut self, ctx: &egui::Context) -> bool {
         self.services.screenshot.tick();
@@ -14,7 +25,7 @@ impl MonitorApp {
         let busy = self.screenshot_pending.is_some() || self.services.screenshot.capturing();
         if self.screenshot_hidden && !busy {
             self.screenshot_hidden = false;
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            restore_root(ctx, self.passthrough);
             ctx.send_viewport_cmd_to(
                 egui::ViewportId::from_hash_of("settings"),
                 egui::ViewportCommand::Visible(true),
@@ -28,6 +39,7 @@ impl MonitorApp {
             }
         }
         if busy {
+            suspend_root(ctx);
             self.flyout.dismiss();
             self.services.desktop.tooltip("", false);
             ctx.request_repaint_after(Duration::from_millis(40));
@@ -46,7 +58,7 @@ impl MonitorApp {
             self.settings.screenshot_page.hide(ctx);
             self.settings.open = false;
             self.screenshot_hidden = true;
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            suspend_root(ctx);
             ctx.send_viewport_cmd_to(
                 egui::ViewportId::from_hash_of("settings"),
                 egui::ViewportCommand::Visible(false),

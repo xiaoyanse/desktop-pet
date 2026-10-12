@@ -20,6 +20,23 @@ use interfaces::{ReportCollector, ResourceSampler, SettingsStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if let Some(index) = args
+        .iter()
+        .position(|a| a == "--screenshot-lifecycle-probe")
+    {
+        let Some(path) = args.get(index + 1).filter(|p| !p.starts_with("--")) else {
+            native::message("生命周期验证需要新日志的绝对路径");
+            return;
+        };
+        if let Err(e) = bootstrap::screenshot_lifecycle::run(
+            std::path::Path::new(path),
+            args.iter().any(|a| a == "--blank-root"),
+        ) {
+            native::message(&e);
+            std::process::exit(1);
+        }
+        return;
+    }
     if args.get(1).is_some_and(|a| a == "--report-probe") {
         let path = args
             .get(2)

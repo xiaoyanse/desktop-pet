@@ -6,6 +6,10 @@ use crate::{
 use eframe::egui::{self, Color32};
 
 pub fn show(ui: &mut egui::Ui, page: &mut Page, service: &mut ScreenshotService) {
+    let escaped = ui.input(|i| i.key_pressed(egui::Key::Escape));
+    if escaped || service.busy() {
+        page.stroke.clear();
+    }
     let busy = service.busy();
     let Some(document) = service.document.as_mut() else {
         return;
@@ -46,8 +50,7 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, service: &mut ScreenshotService)
             },
         );
     }
-    if busy {
-        page.stroke.clear();
+    if busy || escaped {
         return;
     }
     if response.drag_started() {
@@ -56,7 +59,7 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, service: &mut ScreenshotService)
             page.stroke.push(point(rect, image_size, position));
         }
     }
-    if response.dragged() || response.drag_stopped() {
+    if !page.stroke.is_empty() && (response.dragged() || response.drag_stopped()) {
         if let Some(position) = response.interact_pointer_pos() {
             let next = point(rect, image_size, position);
             if page.tool == Tool::Pen {
@@ -69,20 +72,20 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, service: &mut ScreenshotService)
                 *last = next;
             }
         }
-        if response.drag_stopped() && page.stroke.len() >= 2 {
-            let mark = Mark {
-                tool: page.tool,
-                points: std::mem::take(&mut page.stroke),
-                color: page.color,
-                width: page.width,
-            };
-            if let Err(error) = service.document.as_mut().unwrap().add(mark) {
-                service.message = error;
+        if response.drag_stopped() {
+            let points = std::mem::take(&mut page.stroke);
+            if points.len() >= 2 {
+                let mark = Mark {
+                    tool: page.tool,
+                    points,
+                    color: page.color,
+                    width: page.width,
+                };
+                if let Err(error) = service.document.as_mut().unwrap().add(mark) {
+                    service.message = error;
+                }
             }
         }
-    }
-    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-        page.stroke.clear();
     }
 }
 fn point(rect: egui::Rect, size: [u32; 2], position: egui::Pos2) -> [u32; 2] {
