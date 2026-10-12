@@ -53,7 +53,7 @@ pub struct MonitorApp {
 }
 impl MonitorApp {
     pub fn open_settings(&mut self) {
-        self.settings.open = true;
+        self.settings.reveal();
     }
     pub fn new(
         cc: &eframe::CreationContext<'_>,
@@ -279,7 +279,7 @@ impl MonitorApp {
             .menu(self.config.compact || self.config.pet_mode)
         {
             1 => self.toggle_mode(ctx),
-            2 => self.settings.open = true,
+            2 => self.settings.reveal(),
             3 => self.config.background = !self.config.background,
             4 => self.config.border = !self.config.border,
             5 => self.toggle_pet(ctx),
@@ -297,7 +297,7 @@ impl MonitorApp {
             !self.hover_quick && !self.flyout.active(),
         );
         match action {
-            Some(Action::Settings) => self.settings.open = true,
+            Some(Action::Settings) => self.settings.reveal(),
             Some(Action::Lock) => {
                 if self.locked {
                     self.unlock(ctx);
@@ -371,18 +371,8 @@ impl eframe::App for MonitorApp {
                 self.expanded = false;
                 self.configure();
             }
-            Some(flyout::Action::Settings) => self.settings.open = true,
-            Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
-            Some(flyout::Action::Timer) => self.settings.open_timer(),
-            Some(flyout::Action::Meeting) => self.settings.open_meeting(),
-            Some(flyout::Action::Clipboard) => self.settings.open_clipboard(),
-            Some(flyout::Action::Report) => self.settings.open_report(),
-            Some(flyout::Action::Screenshot) => self.settings.open_screenshot(),
-            Some(flyout::Action::Notes) => {
-                self.settings.open_office(crate::domain::office::Kind::Note)
-            }
-            Some(flyout::Action::Tasks) => {
-                self.settings.open_office(crate::domain::office::Kind::Task)
+            Some(action) => {
+                self.settings.open_from_pet(action);
             }
             None => {}
         }

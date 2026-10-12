@@ -22,6 +22,7 @@ pub struct Settings {
     tab: usize,
     pub open: bool,
     pub preview_quick: bool,
+    reveal_requested: bool,
     editing: Option<Metric>,
     metric_filter: Option<&'static str>,
     confirm_clean: crate::domain::cleanup_profile::Review,
@@ -32,36 +33,56 @@ pub struct Settings {
     clipboard_page: crate::ui::work_tools::clipboard::Page,
 }
 impl Settings {
+    pub fn reveal(&mut self) {
+        self.open = true;
+        self.reveal_requested = true;
+    }
+    pub fn open_from_pet(&mut self, action: crate::ui::companion::flyout::Action) -> bool {
+        use crate::ui::companion::flyout::Action;
+        match action {
+            Action::Settings => self.reveal(),
+            Action::AdvancedClean => self.open_cleanup(),
+            Action::Timer => self.open_timer(),
+            Action::Meeting => self.open_meeting(),
+            Action::Clipboard => self.open_clipboard(),
+            Action::Report => self.open_report(),
+            Action::Screenshot => self.open_screenshot(),
+            Action::Notes => self.open_office(crate::domain::office::Kind::Note),
+            Action::Tasks => self.open_office(crate::domain::office::Kind::Task),
+            Action::Restore | Action::Compact => return false,
+        }
+        true
+    }
     pub fn open_clipboard(&mut self) {
         self.tab = 11;
-        self.open = true;
+        self.reveal();
     }
     pub fn meeting_visible(&self) -> bool {
         self.open && self.tab == 10
     }
     pub fn open_meeting(&mut self) {
         self.tab = 10;
-        self.open = true;
+        self.reveal();
     }
     pub fn open_cleanup(&mut self) {
         self.tab = 4;
-        self.open = true;
+        self.reveal();
     }
     pub fn open_timer(&mut self) {
         self.tab = 6;
-        self.open = true;
+        self.reveal();
     }
     pub fn open_report(&mut self) {
         self.tab = 7;
-        self.open = true;
+        self.reveal();
     }
     pub fn open_screenshot(&mut self) {
         self.tab = 8;
-        self.open = true;
+        self.reveal();
     }
     pub fn open_office(&mut self, kind: crate::domain::office::Kind) {
         self.tab = 9;
-        self.open = true;
+        self.reveal();
         self.office_page.open(kind);
     }
     pub fn show(
@@ -78,6 +99,7 @@ impl Settings {
         }
         let before = serde_json::to_string(config).unwrap();
         let mut closed = false;
+        let reveal = std::mem::take(&mut self.reveal_requested);
         ctx.show_viewport_immediate(
             egui::ViewportId::from_hash_of("settings"),
             egui::ViewportBuilder::default()
@@ -90,6 +112,11 @@ impl Settings {
                 .with_min_inner_size([840.0, 600.0])
                 .with_always_on_top(),
             |ctx, _| {
+                if reveal {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
                 if ctx.input(|i| i.viewport().close_requested()) {
                     closed = true;
                 }

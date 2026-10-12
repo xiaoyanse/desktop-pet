@@ -15,7 +15,7 @@ use crate::{
         monitoring::panel,
     },
 };
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, RichText};
 use std::time::Instant;
 
 pub fn rects(group: Group) -> &'static [Rect] {
@@ -30,7 +30,11 @@ pub fn rects(group: Group) -> &'static [Rect] {
             [270.0, 16.0, 510.0, 124.0],
             [270.0, 350.0, 510.0, 458.0],
         ],
-        Group::Tools => &[[270.0, 75.0, 510.0, 250.0], [270.0, 262.0, 510.0, 446.0]],
+        Group::Tools => &[
+            [270.0, 16.0, 510.0, 136.0],
+            [270.0, 152.0, 510.0, 290.0],
+            [270.0, 310.0, 510.0, 458.0],
+        ],
     }
 }
 pub fn show(
@@ -118,8 +122,6 @@ pub fn show(
             }
         }
         (Group::Tools, 0) => {
-            let (_, r) = ui.allocate_space(egui::vec2(40.0, 40.0));
-            icons::draw(ui.painter(), r, Icon::Report, Color32::WHITE);
             ui.label(RichText::new("资源诊断报告").size(16.0).strong());
             ui.label(
                 RichText::new("资源 · 进程来源 · 默认脱敏")
@@ -130,11 +132,18 @@ pub fn show(
                 *action = Some(Action::Report);
             }
         }
-        (Group::Tools, _) => {
+        (Group::Tools, 1) => {
+            ui.label(RichText::new("屏幕工具").size(16.0).strong());
+            ui.label(
+                RichText::new("全屏 · 区域 · 自由 · 窗口")
+                    .size(12.0)
+                    .color(theme::MUTED),
+            );
             if actions::secondary(ui, Icon::Screenshot, "截图与贴图").clicked() {
                 *action = Some(Action::Screenshot);
             }
-            ui.add_space(8.0);
+        }
+        (Group::Tools, _) => {
             ui.label(RichText::new("设置工作台").size(16.0).strong());
             ui.label(
                 RichText::new("监测 · 外观 · 自动规则")

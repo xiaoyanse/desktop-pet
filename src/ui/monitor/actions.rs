@@ -36,7 +36,7 @@ impl MonitorApp {
                 Action::Passthrough => self.lock(ctx, true),
                 Action::Settings => {
                     self.unlock(ctx);
-                    self.settings.open = true;
+                    self.settings.reveal();
                 }
                 Action::ToggleMode => self.toggle_mode(ctx),
                 Action::Pet => self.toggle_pet(ctx),

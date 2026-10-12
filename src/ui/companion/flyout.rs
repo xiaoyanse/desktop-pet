@@ -3,7 +3,7 @@ mod components;
 mod lifecycle_tests;
 mod render;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 use crate::{
     application::Services,
     domain::{
