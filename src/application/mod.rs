@@ -1,6 +1,7 @@
 pub mod cleanup;
 pub mod monitoring;
 pub mod report;
+pub mod screenshot;
 pub mod work_timer;
 use crate::interfaces::{DesktopSession, MemoryCleaner, SettingsStore};
 
@@ -13,6 +14,8 @@ pub struct Dependencies {
     pub font: Option<crate::interfaces::FontSource>,
     pub report_collector: std::sync::Arc<dyn crate::interfaces::ReportCollector>,
     pub report_store: std::sync::Arc<dyn crate::interfaces::ReportStore>,
+    pub screen_capture: std::sync::Arc<dyn crate::interfaces::ScreenCapture>,
+    pub screenshot_output: std::sync::Arc<dyn crate::interfaces::ScreenshotOutput>,
 }
 
 pub struct Services {
@@ -21,4 +24,5 @@ pub struct Services {
     pub cleaner: cleanup::CleanupService,
     pub timer: work_timer::WorkTimer,
     pub report: report::ReportService,
+    pub screenshot: screenshot::ScreenshotService,
 }

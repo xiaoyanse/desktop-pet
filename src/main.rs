@@ -131,6 +131,10 @@ fn main() {
             infrastructure::windows::report::WindowsReportCollector,
         ),
         report_store: std::sync::Arc::new(infrastructure::storage::reports::LocalReports),
+        screen_capture: std::sync::Arc::new(infrastructure::windows::screenshot::WindowsCapture),
+        screenshot_output: std::sync::Arc::new(
+            infrastructure::storage::screenshots::LocalScreenshots,
+        ),
     });
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title("桌面资源监视器")

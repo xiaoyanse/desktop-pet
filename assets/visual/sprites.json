@@ -181,7 +181,10 @@
     "view-immersive",
     "nav-report",
     "clipboard",
-    "save-local"
+    "save-local",
+    "screenshot",
+    "capture-annotate",
+    "pinned-image"
   ],
   "background": {
     "file": "workbench-material-v2.png",

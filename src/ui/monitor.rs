@@ -3,6 +3,7 @@ use super::{
     companion::{flyout, pet},
     monitoring::{controls, details, surface},
 };
+mod screenshot;
 mod work_timer;
 use crate::{
     application::{Dependencies, Services, monitoring::MonitorWorker},
@@ -40,6 +41,8 @@ pub struct MonitorApp {
     flyout: flyout::Flyout,
     hover_quick: bool,
     pet_hover: bool,
+    screenshot_pending: Option<(crate::domain::screenshot::Mode, Instant)>,
+    screenshot_hidden: bool,
 }
 impl MonitorApp {
     pub fn open_settings(&mut self) {
@@ -69,7 +72,12 @@ impl MonitorApp {
             })
             .unwrap_or(0);
         let wake: crate::interfaces::Wake = Arc::new(move || ctx.request_repaint());
-        let services = Services {
+        let mut services = Services {
+            screenshot: crate::application::screenshot::ScreenshotService::new(
+                dependencies.screen_capture,
+                dependencies.screenshot_output,
+                wake.clone(),
+            ),
             report: crate::application::report::ReportService::new(
                 dependencies.report_collector,
                 dependencies.report_store,
@@ -84,6 +92,9 @@ impl MonitorApp {
             ),
             desktop: (dependencies.desktop)(hwnd, wake.clone()),
         };
+        if !config.screenshot_folder.is_empty() {
+            services.screenshot.folder = config.screenshot_folder.clone();
+        }
         if let Some(warning) = services.desktop.warning() {
             message = warning;
         }
@@ -112,6 +123,8 @@ impl MonitorApp {
             flyout: flyout::Flyout::default(),
             hover_quick: false,
             pet_hover: false,
+            screenshot_pending: None,
+            screenshot_hidden: false,
         }
     }
     fn configure(&mut self) {
@@ -369,6 +382,9 @@ impl eframe::App for MonitorApp {
         self.receive(ctx);
         self.services.timer.tick(Instant::now());
         self.services.report.tick();
+        if self.screenshot_tick(ctx) {
+            return;
+        }
         self.card(ctx);
         self.timer_feedback(ctx);
         self.flyout.settings_closed(self.settings.open);
@@ -404,6 +420,7 @@ impl eframe::App for MonitorApp {
             Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
             Some(flyout::Action::Timer) => self.settings.open_timer(),
             Some(flyout::Action::Report) => self.settings.open_report(),
+            Some(flyout::Action::Screenshot) => self.settings.open_screenshot(),
             None => {}
         }
         if let Some(warning) = self.flyout.warning.take() {
@@ -417,7 +434,8 @@ impl eframe::App for MonitorApp {
             &mut self.message,
             &mut self.services,
         );
-        if self.flyout.active() || self.settings.open {
+        self.screenshot_ui(ctx);
+        if self.flyout.active() || self.settings.open || self.services.screenshot.pinned.is_some() {
             self.services.desktop.configure_auxiliary();
         }
         if settings_changed {

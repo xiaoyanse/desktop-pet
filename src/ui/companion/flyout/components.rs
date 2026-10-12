@@ -71,9 +71,11 @@ pub fn show(
             }
         }
         (Group::Tools, _) => {
-            let (_, r) = ui.allocate_space(egui::vec2(48.0, 48.0));
-            icons::draw(ui.painter(), r, Icon::Settings, Color32::WHITE);
-            ui.label(RichText::new("设置工作台").size(18.0).strong());
+            if actions::secondary(ui, Icon::Screenshot, "截图与贴图").clicked() {
+                *action = Some(Action::Screenshot);
+            }
+            ui.add_space(8.0);
+            ui.label(RichText::new("设置工作台").size(16.0).strong());
             ui.label(
                 RichText::new("监测 · 外观 · 自动规则")
                     .size(12.0)

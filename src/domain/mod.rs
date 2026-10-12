@@ -5,4 +5,5 @@ pub mod config;
 pub mod desktop;
 pub mod report;
 pub mod resources;
+pub mod screenshot;
 pub mod work_timer;

@@ -27,6 +27,7 @@ pub struct Settings {
     confirm_clean: crate::domain::cleanup_profile::Review,
     pets: pet::Sprites,
     report_page: crate::ui::work_tools::diagnostic_report::Page,
+    pub screenshot_page: crate::ui::work_tools::screenshot::Page,
 }
 impl Settings {
     pub fn open_cleanup(&mut self) {
@@ -39,6 +40,10 @@ impl Settings {
     }
     pub fn open_report(&mut self) {
         self.tab = 7;
+        self.open = true;
+    }
+    pub fn open_screenshot(&mut self) {
+        self.tab = 8;
         self.open = true;
     }
     pub fn show(
@@ -99,6 +104,12 @@ impl Settings {
                             );
                         } else if self.tab == 7 {
                             self.report_page.show(ui, config, &mut services.report);
+                        } else if self.tab == 8 {
+                            let previous_folder = services.screenshot.folder.clone();
+                            self.screenshot_page.show(ui, &mut services.screenshot);
+                            if previous_folder != services.screenshot.folder {
+                                config.screenshot_folder = services.screenshot.folder.clone();
+                            }
                         } else {
                             egui::ScrollArea::vertical()
                                 .id_salt(("settings-scroll", self.tab))
@@ -128,6 +139,8 @@ impl Settings {
             self.open = false;
             self.confirm_clean.cancel();
             artwork::release(ctx, "workspace");
+            self.screenshot_page.release();
+            services.screenshot.discard();
         }
         before != serde_json::to_string(config).unwrap()
     }

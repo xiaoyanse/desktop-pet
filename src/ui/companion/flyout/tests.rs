@@ -102,6 +102,7 @@ impl DesktopSession for Desktop {
 }
 pub(super) fn services() -> Services {
     Services {
+        screenshot: crate::application::screenshot::tests::fake_service().0,
         settings: Box::new(Memory),
         desktop: Box::new(Desktop),
         cleaner: CleanupService::new(Box::new(Memory), Box::new(Memory), Arc::new(|| {})),

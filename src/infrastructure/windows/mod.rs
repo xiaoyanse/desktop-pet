@@ -6,3 +6,4 @@ pub mod monitoring;
 pub mod native;
 pub mod presentation;
 pub mod report;
+pub mod screenshot;

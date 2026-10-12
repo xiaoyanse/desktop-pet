@@ -45,7 +45,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 theme::MUTED,
             );
             ui.add_space(20.0);
-            let row_height = ((ui.available_height() - 44.0 - 8.0 * 15.0) / 8.0).clamp(32.0, 60.0);
+            let row_height = ((ui.available_height() - 68.0 - 9.0 * 15.0) / 9.0).clamp(24.0, 60.0);
             for (index, icon, name) in [
                 (0, Icon::Monitor, "监测项目"),
                 (1, Icon::Palette, "外观与宠物"),
@@ -55,6 +55,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 (5, Icon::History, "清理记录"),
                 (6, Icon::Timer, "工作计时"),
                 (7, Icon::Report, "诊断报告"),
+                (8, Icon::Screenshot, "截图与贴图"),
             ] {
                 let (rect, _) = ui.allocate_exact_size(
                     egui::vec2(ui.available_width(), row_height),
@@ -140,12 +141,21 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
             "诊断报告",
             "整理资源现场，查看进程来源，保留一份可分享的快照。",
         ),
+        8 => ("截图与贴图", "选择画面、标出重点，让参考随手可见。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
     ui.label(RichText::new(title).size(34.0).strong());
     ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
+        if tab == 8 {
+            ui.label(
+                RichText::new("四种选区 · 本地批注 · 置顶参考")
+                    .size(12.0)
+                    .color(theme::CHAMPAGNE),
+            );
+            return;
+        }
         if tab == 7 {
             ui.label(
                 RichText::new("按需生成 · 路径脱敏 · 本地保存")
@@ -224,9 +234,12 @@ mod tests {
                 })
                 .unwrap()
         };
-        let last = bounds("诊断报告");
+        let last = bounds("截图与贴图");
         let footer = bounds("本机监测");
-        assert!(last.bottom() + 12.0 < footer.top());
+        assert!(
+            last.bottom() + 12.0 < footer.top(),
+            "last={last:?},footer={footer:?}"
+        );
         assert!(footer.bottom() < 600.0);
     }
 }

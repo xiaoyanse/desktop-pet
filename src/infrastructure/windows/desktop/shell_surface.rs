@@ -34,13 +34,20 @@ pub fn auxiliary() {
                 super::settings_surface::attach(settings);
             }
         }
-        for title in ["资源助手 · 快捷操作", "资源助手 · 计时提醒"] {
+        for title in [
+            "资源助手 · 快捷操作",
+            "资源助手 · 计时提醒",
+            "桌面仪表 · 置顶贴图",
+        ] {
             let hwnd = FindWindowW(std::ptr::null(), native::wide(title).as_ptr());
             let mut pid = 0;
             if !hwnd.is_null() {
                 GetWindowThreadProcessId(hwnd, &mut pid);
                 if pid == std::process::id() {
                     attach(hwnd);
+                    if title == "桌面仪表 · 置顶贴图" {
+                        super::settings_surface::attach_bounded(hwnd);
+                    }
                 }
             }
         }

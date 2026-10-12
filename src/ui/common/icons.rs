@@ -30,6 +30,9 @@ pub enum Icon {
     Report,
     Copy,
     Save,
+    Screenshot,
+    Annotate,
+    PinnedImage,
 }
 
 impl Icon {
@@ -61,6 +64,9 @@ impl Icon {
             Self::Report => "nav-report",
             Self::Copy => "clipboard",
             Self::Save => "save-local",
+            Self::Screenshot => "screenshot",
+            Self::Annotate => "capture-annotate",
+            Self::PinnedImage => "pinned-image",
         }
     }
 }

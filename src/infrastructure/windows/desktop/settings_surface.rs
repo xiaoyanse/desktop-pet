@@ -8,13 +8,19 @@ const ID: usize = 0x0440;
 const ATTACHED: *const u16 = windows_sys::core::w!("DesktopMeter.SettingsSurface");
 
 pub fn attach(hwnd: HWND) {
+    attach_impl(hwnd, true);
+}
+pub fn attach_bounded(hwnd: HWND) {
+    attach_impl(hwnd, false);
+}
+fn attach_impl(hwnd: HWND, resize: bool) {
     unsafe {
         let mut pid = 0;
         GetWindowThreadProcessId(hwnd, &mut pid);
         if pid != std::process::id() || !GetPropW(hwnd, ATTACHED).is_null() {
             return;
         }
-        if SetWindowSubclass(hwnd, Some(callback), ID, 0) != 0 {
+        if SetWindowSubclass(hwnd, Some(callback), ID, usize::from(resize)) != 0 {
             SetPropW(hwnd, ATTACHED, ID as HANDLE);
             repair_position(hwnd);
         }
@@ -82,10 +88,10 @@ unsafe extern "system" fn callback(
     w: WPARAM,
     l: LPARAM,
     _: usize,
-    _: usize,
+    resize: usize,
 ) -> LRESULT {
     unsafe {
-        if msg == WM_NCHITTEST && IsZoomed(hwnd) == 0 {
+        if resize != 0 && msg == WM_NCHITTEST && IsZoomed(hwnd) == 0 {
             let mut point = POINT {
                 x: l as i16 as i32,
                 y: (l >> 16) as i16 as i32,
