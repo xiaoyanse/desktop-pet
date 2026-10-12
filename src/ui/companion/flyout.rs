@@ -22,6 +22,7 @@ pub enum Action {
     Settings,
     AdvancedClean,
     Timer,
+    Report,
 }
 pub struct Flyout {
     pub pinned: bool,

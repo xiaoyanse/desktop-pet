@@ -27,6 +27,9 @@ pub enum Icon {
     Timer,
     Play,
     Pause,
+    Report,
+    Copy,
+    Save,
 }
 
 impl Icon {
@@ -55,6 +58,9 @@ impl Icon {
             Self::Timer => "timer",
             Self::Play => "play",
             Self::Pause => "pause",
+            Self::Report => "report",
+            Self::Copy => "clipboard",
+            Self::Save => "save-local",
         }
     }
 }

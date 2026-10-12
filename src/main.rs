@@ -13,10 +13,32 @@ use infrastructure::{
         desktop::WindowsDesktop, diagnostics, memory::cleanup, monitoring::sampler::Sampler, native,
     },
 };
-use interfaces::{ResourceSampler, SettingsStore};
+use interfaces::{ReportCollector, ResourceSampler, SettingsStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|a| a == "--report-probe") {
+        let path = args
+            .get(2)
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| data_dir().join("report-probe.md"));
+        let result = infrastructure::windows::report::WindowsReportCollector
+            .collect(
+                &JsonSettings.load().0,
+                &std::sync::atomic::AtomicBool::new(false),
+            )
+            .and_then(|report| {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                std::fs::write(&path, report.markdown()).map_err(|e| e.to_string())
+            });
+        if let Err(e) = result {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if args.get(1).is_some_and(|a| a == "--inspect") {
         let path = args
             .get(2)
@@ -75,6 +97,10 @@ fn main() {
         cleanup_history: Box::new(infrastructure::storage::cleanup_history::JsonCleanupHistory),
         desktop: Box::new(move |hwnd, wake| Box::new(WindowsDesktop::attach(hwnd, snapping, wake))),
         font: native::font_bytes(),
+        report_collector: std::sync::Arc::new(
+            infrastructure::windows::report::WindowsReportCollector,
+        ),
+        report_store: std::sync::Arc::new(infrastructure::storage::reports::LocalReports),
     };
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title("桌面资源监视器")

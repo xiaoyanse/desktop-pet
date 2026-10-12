@@ -45,7 +45,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 theme::MUTED,
             );
             ui.add_space(20.0);
-            let row_height = ((ui.available_height() - 44.0 - 7.0 * 15.0) / 7.0).clamp(32.0, 60.0);
+            let row_height = ((ui.available_height() - 44.0 - 8.0 * 15.0) / 8.0).clamp(32.0, 60.0);
             for (index, icon, name) in [
                 (0, Icon::Monitor, "监测项目"),
                 (1, Icon::Palette, "外观与宠物"),
@@ -54,6 +54,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 (4, Icon::Clean, "内存清理"),
                 (5, Icon::History, "清理记录"),
                 (6, Icon::Timer, "工作计时"),
+                (7, Icon::Report, "诊断报告"),
             ] {
                 let (rect, _) = ui.allocate_exact_size(
                     egui::vec2(ui.available_width(), row_height),
@@ -133,12 +134,24 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
         3 => ("常规设置", "平衡刷新速度、资源开销与桌面体验。"),
         4 => ("内存清理", "按工作状态选择档位，每次操作都明确可查。"),
         6 => ("工作计时", "专注、休息与记录时长，按自己的节奏工作。"),
+        7 => (
+            "诊断报告",
+            "整理资源现场，查看进程来源，保留一份可分享的快照。",
+        ),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
     ui.label(RichText::new(title).size(34.0).strong());
     ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
+        if tab == 7 {
+            ui.label(
+                RichText::new("按需生成 · 路径脱敏 · 本地保存")
+                    .size(12.0)
+                    .color(theme::CHAMPAGNE),
+            );
+            return;
+        }
         if tab == 6 {
             ui.label(
                 RichText::new("专注 · 休息 · 正计时")
@@ -209,7 +222,7 @@ mod tests {
                 })
                 .unwrap()
         };
-        let last = bounds("工作计时");
+        let last = bounds("诊断报告");
         let footer = bounds("本机监测");
         assert!(last.bottom() + 12.0 < footer.top());
         assert!(footer.bottom() < 600.0);

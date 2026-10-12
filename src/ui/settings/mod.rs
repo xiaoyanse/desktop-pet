@@ -1,5 +1,7 @@
 mod pages;
 mod shell;
+#[cfg(test)]
+mod tests;
 use crate::ui::{
     common::{artwork, theme},
     companion::pet,
@@ -24,6 +26,7 @@ pub struct Settings {
     metric_filter: Option<&'static str>,
     confirm_clean: crate::domain::cleanup_profile::Review,
     pets: pet::Sprites,
+    report_page: crate::ui::work_tools::diagnostic_report::Page,
 }
 impl Settings {
     pub fn open_cleanup(&mut self) {
@@ -32,6 +35,10 @@ impl Settings {
     }
     pub fn open_timer(&mut self) {
         self.tab = 6;
+        self.open = true;
+    }
+    pub fn open_report(&mut self) {
+        self.tab = 7;
         self.open = true;
     }
     pub fn show(
@@ -90,6 +97,8 @@ impl Settings {
                                 &mut services.cleaner,
                                 &mut self.confirm_clean,
                             );
+                        } else if self.tab == 7 {
+                            self.report_page.show(ui, config, &mut services.report);
                         } else {
                             egui::ScrollArea::vertical()
                                 .id_salt(("settings-scroll", self.tab))

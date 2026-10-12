@@ -116,6 +116,12 @@
       ]
     },
     {
+      "file": "atlases/save-local-v1.png",
+      "grid": [1, 1],
+      "size": 64,
+      "names": ["save-local"]
+    },
+    {
       "file": "atlases/cleanup-profiles-v1.png",
       "grid": [
         3,
@@ -166,7 +172,10 @@
     "brand-planet",
     "view-satin",
     "view-glass",
-    "view-immersive"
+    "view-immersive",
+    "report",
+    "clipboard",
+    "save-local"
   ],
   "background": {
     "file": "workbench-material-v2.png",

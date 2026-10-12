@@ -23,6 +23,20 @@ use std::{
     time::Duration,
 };
 struct Memory;
+impl crate::interfaces::ReportCollector for Memory {
+    fn collect(
+        &self,
+        _: &Config,
+        _: &std::sync::atomic::AtomicBool,
+    ) -> Result<crate::domain::report::Report, String> {
+        panic!("opening a tool must not automatically collect a report")
+    }
+}
+impl crate::interfaces::ReportStore for Memory {
+    fn save(&self, _: &str) -> Result<String, String> {
+        panic!("not exercised")
+    }
+}
 impl SettingsStore for Memory {
     fn load(&self) -> (Config, Option<String>) {
         (Config::default(), None)
@@ -92,6 +106,11 @@ fn services() -> Services {
         desktop: Box::new(Desktop),
         cleaner: CleanupService::new(Box::new(Memory), Box::new(Memory), Arc::new(|| {})),
         timer: Default::default(),
+        report: crate::application::report::ReportService::new(
+            Arc::new(Memory),
+            Arc::new(Memory),
+            Arc::new(|| {}),
+        ),
     }
 }
 fn paint(
@@ -245,4 +264,9 @@ fn office_controls_reuse_real_timer_and_categories_do_not_activate_other_tools()
     let result = click(&ctx, &mut content, &state, "工具");
     assert_eq!(result.group, Some(Group::Tools));
     assert!(result.action.is_none());
+    state.hover(Duration::ZERO, Some(Group::Tools), true);
+    assert_eq!(
+        click(&ctx, &mut content, &state, "打开诊断报告").action,
+        Some(Action::Report)
+    );
 }

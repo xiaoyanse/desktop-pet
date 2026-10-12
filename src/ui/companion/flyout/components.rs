@@ -26,7 +26,7 @@ pub fn rects(group: Group) -> &'static [Rect] {
             [265.0, 350.0, 510.0, 458.0],
         ],
         Group::Office => &[[250.0, 133.0, 510.0, 340.0]],
-        Group::Tools => &[[270.0, 130.0, 510.0, 305.0]],
+        Group::Tools => &[[270.0, 75.0, 510.0, 250.0], [270.0, 262.0, 510.0, 438.0]],
     }
 }
 pub fn show(
@@ -57,6 +57,19 @@ pub fn show(
             });
         }
         (Group::Office, _) => timer(ui, content, action),
+        (Group::Tools, 0) => {
+            let (_, r) = ui.allocate_space(egui::vec2(40.0, 40.0));
+            icons::draw(ui.painter(), r, Icon::Report, Color32::WHITE);
+            ui.label(RichText::new("资源诊断报告").size(16.0).strong());
+            ui.label(
+                RichText::new("资源 · 进程来源 · 默认脱敏")
+                    .size(12.0)
+                    .color(theme::MUTED),
+            );
+            if actions::secondary(ui, Icon::Report, "打开诊断报告").clicked() {
+                *action = Some(Action::Report);
+            }
+        }
         (Group::Tools, _) => {
             let (_, r) = ui.allocate_space(egui::vec2(48.0, 48.0));
             icons::draw(ui.painter(), r, Icon::Settings, Color32::WHITE);

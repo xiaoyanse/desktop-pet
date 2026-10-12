@@ -88,6 +88,11 @@ impl MonitorApp {
             .unwrap_or(0);
         let wake: crate::interfaces::Wake = Arc::new(move || ctx.request_repaint());
         let services = Services {
+            report: crate::application::report::ReportService::new(
+                dependencies.report_collector,
+                dependencies.report_store,
+                wake.clone(),
+            ),
             timer: Default::default(),
             settings: dependencies.settings,
             cleaner: crate::application::cleanup::CleanupService::new(
@@ -367,6 +372,7 @@ impl eframe::App for MonitorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.receive(ctx);
         self.services.timer.tick(Instant::now());
+        self.services.report.tick();
         self.card(ctx);
         self.timer_feedback(ctx);
         self.flyout.settings_closed(self.settings.open);
@@ -401,6 +407,7 @@ impl eframe::App for MonitorApp {
             Some(flyout::Action::Settings) => self.settings.open = true,
             Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
             Some(flyout::Action::Timer) => self.settings.open_timer(),
+            Some(flyout::Action::Report) => self.settings.open_report(),
             None => {}
         }
         if let Some(warning) = self.flyout.warning.take() {

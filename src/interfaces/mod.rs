@@ -1,11 +1,13 @@
 mod cleanup;
 mod desktop;
 mod monitoring;
+mod report;
 mod storage;
 
 pub use cleanup::MemoryCleaner;
 pub use desktop::{DesktopAction, DesktopFactory, DesktopSession};
 pub use monitoring::{ResourceSampler, SamplerFactory};
+pub use report::{ReportCollector, ReportStore};
 use std::sync::Arc;
 pub use storage::{CleanupHistory, SettingsStore};
 

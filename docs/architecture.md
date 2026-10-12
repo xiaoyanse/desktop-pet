@@ -55,6 +55,8 @@ UI 不导入 infrastructure，不直接读取设置文件或调用 Win32。后�
 
 `ui/common/artwork::draw_content` 缓存静态 RGBA 的主体 UV 边界，并等比绘制材质缩略图；素材仍由同一构建管线处理，不引入运行时图片编解码依赖。
 
+诊断报告按 `domain/report`、`interfaces/report`、`application/report`、Windows `report`、storage `reports` 和 UI `work_tools/diagnostic_report` 组织。只有显式生成/保存才创建短命工作线程，单任务限制与取消由应用层管理；采样器/句柄在工作线程内创建，结束后释放并回收线程。领域 `SafePath` 在构造时脱敏，文档只有脱敏路径；复制与保存共用冻结 Markdown，不重新采集。UI 分入口、固定操作、概览及完整只读预览；设置路由增加报告页，螺旋返回打开意图，不隐式生成。设置集成测试位于 `settings/tests`，不为测试扩大生产模块权限。开发探针 `--report-probe` 使用同一采集与渲染链路。
+
 目录重构保留原配置位置、窗口标题和单实例标识。监测、清理、桌面集成和持久化均通过真实接口装配；清理辅助进程使用新版内部命令与具备进程来源校验的命名管道。公开只读诊断入口 `--probe`、`--inspect` 保留。
 
 `tests/layering.rs` 在测试时检查层间禁止依赖，防止新功能重新把文件存储或 Windows API 放回 UI。测试还覆盖后台采样线程生命周期、真实 egui 点击、边界约束、清理并发与失败、命名管道传输。当前验证结果见 [本轮验证](本轮验证.md)。系统清理效果须与界面和结构验证分别判定。
