@@ -3,6 +3,7 @@ use super::{
     companion::{flyout, pet},
     monitoring::{controls, details, surface},
 };
+mod work_timer;
 use crate::{
     application::{Dependencies, Services, monitoring::MonitorWorker},
     domain::{config::Config, resources::Snapshot},
@@ -87,6 +88,7 @@ impl MonitorApp {
             .unwrap_or(0);
         let wake: crate::interfaces::Wake = Arc::new(move || ctx.request_repaint());
         let services = Services {
+            timer: Default::default(),
             settings: dependencies.settings,
             cleaner: crate::application::cleanup::CleanupService::new(
                 dependencies.cleaner,
@@ -364,7 +366,9 @@ impl eframe::App for MonitorApp {
     }
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.receive(ctx);
+        self.services.timer.tick(Instant::now());
         self.card(ctx);
+        self.timer_feedback(ctx);
         let trigger = self.pet_hover || self.hover_quick;
         let geometry = if trigger || self.flyout.active() || self.flyout.pinned {
             self.services.desktop.geometry()
@@ -376,7 +380,7 @@ impl eframe::App for MonitorApp {
             geometry,
             &self.config,
             &self.snapshot,
-            &mut self.services.cleaner,
+            &mut self.services,
             trigger,
         ) {
             Some(flyout::Action::Restore) => {
@@ -392,6 +396,7 @@ impl eframe::App for MonitorApp {
             }
             Some(flyout::Action::Settings) => self.settings.open = true,
             Some(flyout::Action::AdvancedClean) => self.settings.open_cleanup(),
+            Some(flyout::Action::Timer) => self.settings.open_timer(),
             None => {}
         }
         let previous = self.config.clone();

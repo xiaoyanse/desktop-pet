@@ -8,7 +8,7 @@ use std::{
 };
 
 enum Command {
-    Configure(Config, bool),
+    Configure(Box<Config>, bool),
     Stop,
 }
 
@@ -36,7 +36,7 @@ impl MonitorWorker {
                 wake();
                 match rx.recv_timeout(Duration::from_secs(config.seconds)) {
                     Ok(Command::Configure(next, expanded)) => {
-                        config = next;
+                        config = *next;
                         details = expanded;
                     }
                     Ok(Command::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -51,7 +51,9 @@ impl MonitorWorker {
         }
     }
     pub fn configure(&self, config: &Config, details: bool) {
-        let _ = self.tx.send(Command::Configure(config.clone(), details));
+        let _ = self
+            .tx
+            .send(Command::Configure(Box::new(config.clone()), details));
     }
     pub fn take_sample(&self) -> Option<Snapshot> {
         self.shared.lock().ok()?.take()

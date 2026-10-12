@@ -69,6 +69,7 @@ pub fn inspect(path: &std::path::Path) -> Result<(), String> {
                     "borderStyleBit":frame_style & (WS_BORDER | WS_DLGFRAME) != 0,
                     "nonClientInsets":insets,
                     "maximized":IsZoomed(window) != 0,"minimized":IsIconic(window) != 0,
+                    "active":GetForegroundWindow() == window,
                     "rect":[bounds.left,bounds.top,bounds.right,bounds.bottom]}),
             )
         };
@@ -78,7 +79,8 @@ pub fn inspect(path: &std::path::Path) -> Result<(), String> {
             "topmost": style & WS_EX_TOPMOST != 0, "passthrough": style & WS_EX_TRANSPARENT != 0,
             "layered": style & WS_EX_LAYERED != 0,
             "toolWindow": style & WS_EX_TOOLWINDOW != 0, "appWindow": style & WS_EX_APPWINDOW != 0,
-            "settings": auxiliary("资源监视器 · 设置"), "flyout": auxiliary("资源助手 · 快捷操作") });
+            "settings": auxiliary("资源监视器 · 设置"), "flyout": auxiliary("资源助手 · 快捷操作"),
+            "timerReminder": auxiliary("资源助手 · 计时提醒") });
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }

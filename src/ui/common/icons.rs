@@ -24,6 +24,9 @@ pub enum Icon {
     Minus,
     Minimize,
     Maximize,
+    Timer,
+    Play,
+    Pause,
 }
 
 impl Icon {
@@ -49,6 +52,9 @@ impl Icon {
             Self::Minus => "minus",
             Self::Minimize => "minimize",
             Self::Maximize => "maximize",
+            Self::Timer => "timer",
+            Self::Play => "play",
+            Self::Pause => "pause",
         }
     }
 }

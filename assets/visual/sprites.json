@@ -27,7 +27,7 @@
       "names": ["cleanup-light", "cleanup-medium", "cleanup-heavy"]
     }
   ],
-  "runtime": ["monitor", "appearance", "devices", "general", "clean", "history", "settings", "pin", "unpin", "details", "compact", "restore", "up", "down", "close", "check", "plus", "minus", "minimize", "maximize", "cleanup-light", "cleanup-medium", "cleanup-heavy", "workspace"],
+  "runtime": ["monitor", "appearance", "devices", "general", "clean", "history", "settings", "pin", "unpin", "details", "compact", "restore", "up", "down", "close", "check", "plus", "minus", "minimize", "maximize", "cleanup-light", "cleanup-medium", "cleanup-heavy", "timer", "play", "pause", "workspace"],
   "background": {"file": "workbench-material-v2.png", "name": "workspace", "size": [768, 512]},
   "brand": "monitor"
 }

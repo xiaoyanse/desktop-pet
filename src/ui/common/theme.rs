@@ -8,6 +8,7 @@ pub const MUTED: Color32 = Color32::from_rgb(181, 194, 204);
 pub const ACCENT: Color32 = Color32::from_rgb(165, 213, 200);
 pub const CHAMPAGNE: Color32 = Color32::from_rgb(218, 201, 174);
 pub const HOVER: Color32 = Color32::from_rgb(43, 57, 68);
+pub const PROGRESS_TRACK: Color32 = Color32::from_rgb(75, 93, 105);
 
 pub fn glass_frame() -> egui::Frame {
     egui::Frame::new()

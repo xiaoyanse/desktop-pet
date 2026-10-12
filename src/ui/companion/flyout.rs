@@ -7,7 +7,7 @@ use crate::ui::{
     monitoring::panel,
 };
 use crate::{
-    application::cleanup::CleanupService,
+    application::Services,
     domain::{
         cleanup::CleanupConfig,
         cleanup_profile::{Profile, Review},
@@ -25,6 +25,7 @@ pub enum Action {
     Compact,
     Settings,
     AdvancedClean,
+    Timer,
 }
 pub struct Flyout {
     pub pinned: bool,
@@ -55,9 +56,10 @@ impl Flyout {
         geometry: Option<DesktopGeometry>,
         config: &Config,
         snapshot: &Snapshot,
-        service: &mut CleanupService,
+        services: &mut Services,
         trigger: bool,
     ) -> Option<Action> {
+        let (service, timer) = (&mut services.cleaner, &services.timer);
         if trigger {
             self.until = Instant::now() + Duration::from_millis(500);
         }
@@ -138,6 +140,28 @@ impl Flyout {
                                 }
                                 if rows.is_empty() {
                                     ui.weak("在设置中选择需要显示的监测项。");
+                                }
+                                ui.add_space(10.0);
+                                ui.horizontal(|ui| {
+                                    let state = &timer.session;
+                                    let label =
+                                        if state.state == crate::domain::work_timer::State::Idle {
+                                            "工作计时 · 开始你的节奏".to_owned()
+                                        } else {
+                                            format!(
+                                                "{} · {}",
+                                                state.mode.map_or("计时", |m| m.label()),
+                                                crate::domain::work_timer::clock(
+                                                    state.displayed_seconds()
+                                                )
+                                            )
+                                        };
+                                    if actions::secondary(ui, Icon::Timer, &label).clicked() {
+                                        action = Some(Action::Timer);
+                                    }
+                                });
+                                if timer.notice {
+                                    ui.colored_label(theme::ACCENT, "计时已到，请休息或查看计时");
                                 }
                                 ui.add_space(10.0);
                                 ui.separator();

@@ -189,6 +189,7 @@ pub struct Config {
     pub disk: String,
     pub network: String,
     pub cleanup: super::cleanup::CleanupConfig,
+    pub timer: super::work_timer::TimerConfig,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -243,6 +244,7 @@ impl Default for Config {
             disk: "C:".into(),
             network: String::new(),
             cleanup: super::cleanup::CleanupConfig::default(),
+            timer: super::work_timer::TimerConfig::default(),
         }
     }
 }
@@ -310,6 +312,7 @@ impl Config {
         }
         self.version = 3;
         self.cleanup.normalize();
+        self.timer.normalize();
     }
     pub fn enabled(&self, group: &str) -> bool {
         self.rows

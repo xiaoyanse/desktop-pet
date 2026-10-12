@@ -34,15 +34,14 @@ pub fn auxiliary() {
                 super::settings_surface::attach(settings);
             }
         }
-        let hwnd = FindWindowW(
-            std::ptr::null(),
-            native::wide("资源助手 · 快捷操作").as_ptr(),
-        );
-        let mut pid = 0;
-        if !hwnd.is_null() {
-            GetWindowThreadProcessId(hwnd, &mut pid);
-            if pid == std::process::id() {
-                attach(hwnd);
+        for title in ["资源助手 · 快捷操作", "资源助手 · 计时提醒"] {
+            let hwnd = FindWindowW(std::ptr::null(), native::wide(title).as_ptr());
+            let mut pid = 0;
+            if !hwnd.is_null() {
+                GetWindowThreadProcessId(hwnd, &mut pid);
+                if pid == std::process::id() {
+                    attach(hwnd);
+                }
             }
         }
     }

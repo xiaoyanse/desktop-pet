@@ -3,3 +3,4 @@ pub mod cleanup_profile;
 pub mod config;
 pub mod desktop;
 pub mod resources;
+pub mod work_timer;

@@ -1,5 +1,6 @@
 pub mod cleanup;
 pub mod monitoring;
+pub mod work_timer;
 use crate::interfaces::{DesktopSession, MemoryCleaner, SettingsStore};
 
 pub struct Dependencies {
@@ -15,4 +16,5 @@ pub struct Services {
     pub settings: Box<dyn SettingsStore>,
     pub desktop: Box<dyn DesktopSession>,
     pub cleaner: cleanup::CleanupService,
+    pub timer: work_timer::WorkTimer,
 }

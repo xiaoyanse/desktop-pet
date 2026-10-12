@@ -29,6 +29,10 @@ impl Settings {
         self.tab = 4;
         self.open = true;
     }
+    pub fn open_timer(&mut self) {
+        self.tab = 6;
+        self.open = true;
+    }
     pub fn show(
         &mut self,
         ctx: &egui::Context,
@@ -97,6 +101,11 @@ impl Settings {
                                     ),
                                     2 => pages::devices::show(ui, config, snapshot),
                                     3 => pages::general::show(ui, config, message, services),
+                                    6 => crate::ui::work_tools::work_timer::show(
+                                        ui,
+                                        &mut config.timer,
+                                        &mut services.timer,
+                                    ),
                                     _ => cleanup_page::history(ui, &services.cleaner),
                                 });
                         }
