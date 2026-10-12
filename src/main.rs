@@ -3,6 +3,8 @@ mod application;
 mod assets;
 mod domain;
 mod infrastructure;
+#[cfg(test)]
+mod integration_tests;
 mod interfaces;
 mod ui;
 
@@ -96,7 +98,7 @@ fn main() {
         cleaner: Box::new(cleanup::WindowsCleaner),
         cleanup_history: Box::new(infrastructure::storage::cleanup_history::JsonCleanupHistory),
         desktop: Box::new(move |hwnd, wake| Box::new(WindowsDesktop::attach(hwnd, snapping, wake))),
-        font: native::font_bytes(),
+        font: infrastructure::windows::fonts::load(),
         report_collector: std::sync::Arc::new(
             infrastructure::windows::report::WindowsReportCollector,
         ),

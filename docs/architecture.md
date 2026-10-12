@@ -36,6 +36,8 @@ UI 不导入 infrastructure，不直接读取设置文件或调用 Win32。后�
 
 ## 新功能如何加入
 
+系统字体由 Windows `fonts` 模块加载，接口以 `FontSource` 传递中立的名称与借用/自有字节；UI `common/fonts` 只配置 egui 字体族，主监测入口不负责字体 I/O。Windows 优先只读映射，OnceLock 保留一次成功字体的 backing 至进程退出；UI 使用静态借用，不把字节转为 Vec。映射失败才读取并保留一份缓冲，亦按静态借用交给框架。跨层字体/中文回归在 `src/integration_tests`，UI 仅在测试编译时重导出测试入口，不放宽生产层间边界。
+
 自绘设置窗、开关、数值编辑和分类页签属于 UI；窗口按钮通过 egui 视口命令交给宿主执行，不在 UI 调 Win32。`DesktopSession::configure_auxiliary` 在辅助窗口创建后调用，Windows 的 `settings_surface` 处理设置窗的原生标题/八方向缩放命中，按 DPI 换算且保留按钮和内容客户区；仅附着当前进程的设置窗。`surface` 共享卡片与预览的尺寸/表面规则，预览消费已有采样，不启动独立采样服务。只读诊断分别暴露原始样式位和实际非客户区边距，避免把 Windows 保留的样式位当成可见系统框。
 
 1. 在 domain 定义输入、输出、状态与规则。

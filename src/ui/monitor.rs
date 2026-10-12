@@ -54,27 +54,8 @@ impl MonitorApp {
         let ctx = cc.egui_ctx.clone();
         theme::setup(&ctx);
         let mut message = warning.unwrap_or_default();
-        if let Some((name, data)) = dependencies.font {
-            let mut fonts = egui::FontDefinitions::default();
-            fonts
-                .font_data
-                .insert(name.to_string(), Arc::new(egui::FontData::from_owned(data)));
-            for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
-                if family == egui::FontFamily::Monospace {
-                    fonts
-                        .families
-                        .entry(family)
-                        .or_default()
-                        .push(name.to_string());
-                } else {
-                    fonts
-                        .families
-                        .entry(family)
-                        .or_default()
-                        .insert(0, name.to_string());
-                }
-            }
-            ctx.set_fonts(fonts);
+        if let Some(source) = dependencies.font {
+            super::common::fonts::install(&ctx, source);
         } else {
             message = "未找到中文字体，请安装微软雅黑或黑体后重新打开".into();
         }

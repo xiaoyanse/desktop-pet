@@ -1,5 +1,6 @@
 pub mod desktop;
 pub mod diagnostics;
+pub mod fonts;
 pub mod memory;
 pub mod monitoring;
 pub mod native;

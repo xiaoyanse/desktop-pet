@@ -3,6 +3,11 @@ use crate::domain::desktop::DesktopGeometry;
 
 pub type DesktopFactory = Box<dyn FnOnce(isize, Wake) -> Box<dyn DesktopSession>>;
 
+pub struct FontSource {
+    pub name: std::borrow::Cow<'static, str>,
+    pub bytes: std::borrow::Cow<'static, [u8]>,
+}
+
 #[derive(Clone, Copy)]
 pub enum DesktopAction {
     Unlock,

@@ -10,7 +10,7 @@ pub struct Dependencies {
     pub cleaner: Box<dyn MemoryCleaner>,
     pub cleanup_history: Box<dyn crate::interfaces::CleanupHistory>,
     pub desktop: crate::interfaces::DesktopFactory,
-    pub font: Option<(std::borrow::Cow<'static, str>, Vec<u8>)>,
+    pub font: Option<crate::interfaces::FontSource>,
     pub report_collector: std::sync::Arc<dyn crate::interfaces::ReportCollector>,
     pub report_store: std::sync::Arc<dyn crate::interfaces::ReportStore>,
 }

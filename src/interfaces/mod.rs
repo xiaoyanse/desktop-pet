@@ -5,7 +5,7 @@ mod report;
 mod storage;
 
 pub use cleanup::MemoryCleaner;
-pub use desktop::{DesktopAction, DesktopFactory, DesktopSession};
+pub use desktop::{DesktopAction, DesktopFactory, DesktopSession, FontSource};
 pub use monitoring::{ResourceSampler, SamplerFactory};
 pub use report::{ReportCollector, ReportStore};
 use std::sync::Arc;

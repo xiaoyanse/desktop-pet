@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use windows_sys::Win32::{
     Foundation::*,
     System::{Registry::*, Threading::*},
@@ -201,14 +200,4 @@ pub fn safe_position(hwnd: HWND) {
         );
         SetWindowPos(hwnd, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
     }
-}
-pub fn font_bytes() -> Option<(Cow<'static, str>, Vec<u8>)> {
-    let root = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".into());
-    ["msyh.ttc", "msyh.ttf", "simhei.ttf", "simsun.ttc"]
-        .into_iter()
-        .find_map(|name| {
-            std::fs::read(format!("{root}\\Fonts\\{name}"))
-                .ok()
-                .map(|data| (Cow::Borrowed(name), data))
-        })
 }
