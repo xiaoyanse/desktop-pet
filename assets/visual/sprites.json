@@ -24,6 +24,7 @@
     },
     {
       "file": "atlases/functional-v1.png",
+      "isolate_names": ["screenshot"],
       "grid": [
         4,
         4
@@ -49,7 +50,7 @@
       ]
     },
     {
-      "file": "atlases/controls-v3.png",
+      "file": "atlases/controls-v4.png",
       "grid": [
         4,
         4

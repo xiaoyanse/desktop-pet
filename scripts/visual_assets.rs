@@ -44,11 +44,11 @@ pub fn build(out: &Path) {
             ];
             let mut cell =
                 imageops::crop_imm(&source, left, top, right - left, bottom - top).to_image();
-            let discarded = if atlas["isolate"].as_bool().unwrap_or(false) {
-                isolate_glyph(&mut cell)
-            } else {
-                0
-            };
+            let isolate = atlas["isolate"].as_bool().unwrap_or(false)
+                || atlas["isolate_names"]
+                    .as_array()
+                    .is_some_and(|names| names.iter().any(|entry| entry.as_str() == Some(name)));
+            let discarded = if isolate { isolate_glyph(&mut cell) } else { 0 };
             let transparent = cell.pixels().filter(|p| p[3] < 16).count();
             assert!(transparent * 10 > cell.len() / 4, "{name} 缺少透明留白");
             let bounds = opaque_bounds(&cell);

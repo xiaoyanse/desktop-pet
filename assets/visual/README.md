@@ -1,6 +1,6 @@
 # 视觉资产与切图
 
-生成日期：2026-10-12。使用用户授权的内置 image_gen。原图、完整提示词、版本和切图清单均保存在项目内。当前已接入设置、悬浮操作栏、托盘、原生菜单、工作计时、诊断报告及分层螺旋；便签等仍待实现，素材存在不表示功能完成。
+生成日期：2026-10-12。使用用户授权的内置 image_gen。原图、完整提示词、版本和切图清单均保存在项目内。当前已接入设置、悬浮操作栏、托盘、原生菜单、工作计时、诊断报告、截图、便签/待办、会议辅助及分层螺旋；素材存在不表示对应功能或现场验收完成。
 
 ## 风格与当前取舍
 
@@ -16,7 +16,8 @@
 | atlases/functional-v1.png | 1254×1254，4×4 | 功能对象；工具箱/报告两格被补图替代 | [functional-icons-v1](prompts/functional-icons-v1.md) |
 | atlases/controls-v1.png | 1254×1254，4×4 | 原控制图，透明区域污染，停用 | [control-icons-v1](prompts/control-icons-v1.md) |
 | atlases/controls-v2-rejected.png | 1254×1254，4×4 | 修图仍有杂点，归档，不参与构建 | [control-icons-v2](prompts/control-icons-v2.md) |
-| atlases/controls-v3.png | 1254×1254，4×4 | 新轮廓；原图仍有杂点，构建提取主体后使用 | [control-icons-v3](prompts/control-icons-v3.md) |
+| atlases/controls-v3.png | 1254×1254，4×4 | 原纯白轮廓版本；阶段二十一替换，保留历史 | [control-icons-v3](prompts/control-icons-v3.md) |
+| atlases/controls-v4.png | 1254×1254，4×4 | 烟蓝玻璃、玉绿边缘、珍珠白高光；15项控制图进入运行，设置仍沿用玻璃导航图 | [control-icons-v4](prompts/control-icons-v4.md) |
 | atlases/functional-repairs-v1.png | 1774×887，2×1 | 工具箱/报告补图，两格边缘通过 | [functional-repairs-v1](prompts/functional-repairs-v1.md) |
 | atlases/spiral-islands-v1.png | 1536×1024，3×2 | 分类组件；已接入螺旋及选中态 | [spiral-islands-v1](prompts/spiral-islands-v1.md) |
 | atlases/workbench-details-v1.png | 1536×1024，2×2 | 玻璃星球品牌与三张材质缩略图；数据仍为真实采样 | [workbench-details-v1](prompts/workbench-details-v1.md) |
@@ -38,13 +39,15 @@
 - 分类组件：第一行资源/办公/工具，第二行对应选中态。办公：录音/回溯/待办/提醒；批注/贴图/便签/工作区。补图：工具、报告。
 - 清理档位：轻度、中度、重度，每格 724×724，输出 64×64。
 
-宽 W、高 H、列 C、行 R，单元使用整数比例边界 W*c/C、W*(c+1)/C、H*r/R、H*(r+1)/R，保留最右/最下像素。按主体 alpha≥128 的边界加 5% 留白、等比居中缩放。控制图先以 alpha≥200 连通主体切图，保留面积至少为最大主体 1/8 的断开笔画及 3 像素抗锯齿边缘，剔除外围杂点；此规则只用于指定的控制 atlas，不处理宠物或其他素材。切片需实看以防丢笔画。
+宽 W、高 H、列 C、行 R，单元使用整数比例边界 W*c/C、W*(c+1)/C、H*r/R、H*(r+1)/R，保留最右/最下像素。按主体 alpha≥128 的边界加 5% 留白、等比居中缩放。隔离切片先以 alpha≥200 连通主体切图，保留面积至少为最大主体 1/8 的断开笔画及 3 像素抗锯齿边缘，剔除外围杂点；规则用于标有isolate的图集及isolate_names点名的切片（当前新增screenshot），未列功能图和宠物不额外处理。切片需实看以防丢笔画。
 
 缩放采用预乘 alpha 后 Lanczos3 再还原，避免黑边。功能/控制/办公输出 64×64，螺旋 128×128，背景 768×512；品牌另输出 32/64。每格验证非空、透明留白和边缘；当前运行素材未通过即阻止构建。原工具/报告草稿保留为 needs-review，不能加入 runtime。
 
 构建目录 OUT_DIR 生成 artwork-manifest.json（实际边界、主体范围、尺寸、剔除像素、质量、是否运行）、artwork-preview.png（32/20像素接触表，按实际切片数调整高度）、art-*.png/rgba。这些生成产物不提交；原图、清单及工具提交。测试覆盖断开的暂停笔画、抗锯齿、孤立杂点、白图标缩放及真实 GDI alpha 混合。
 
 ## 运行预算与用途
+
+阶段二十一仅替换控制切片、去除截图切片杂点，运行目录仍46对象/2,801,664字节。新原图820,262字节，项目内版本与完整提示词保存；内置工具默认路径已有Junction，实际原图位于E:\CodexData，再复制到本项目E盘资产目录，没有新C盘大文件目录。原控制v3保留，不同时链接两套纹理。新增显式开发图标画廊显示生产16个常用入口在16/20/24像素与禁用状态下的结果；不是生产UI新增页面或采样线程。
 
 阶段二十新增会议图标，复用已有functional-v1图集的合格切片，不生成新原图或提示词。运行46对象、2,801,664字节（35个64×64图标、10个128×128切片、一张768×512背景），仍受3 MiB构建限制。会议页皮肤和状态由共享Rust组件绘制；这不是应用运行内存测量。
 

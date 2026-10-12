@@ -23,6 +23,7 @@ const STAGES: &[&str] = &[
     "meeting-overtime.png",
     "meeting-unavailable.png",
     "meeting-reminder.png",
+    "control-icons.png",
 ];
 impl OfficeStore for Memory {
     fn load(&self) -> Result<Book, String> {
@@ -162,7 +163,7 @@ impl eframe::App for App {
                         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
                             360.0, 296.0,
                         )));
-                    } else if self.stage == 4 {
+                    } else if self.stage == 4 || self.stage == 11 {
                         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
                             1040.0, 820.0,
                         )));

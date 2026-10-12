@@ -76,7 +76,9 @@ impl Preview {
         }
     }
     pub fn show(&mut self, ctx: &egui::Context, service: &mut OfficeService) {
-        if self.stage == 10 {
+        if self.stage == 11 {
+            super::control_icons::show(ctx);
+        } else if self.stage == 10 {
             egui::CentralPanel::default()
                 .frame(crate::ui::common::components::layout::dialog_frame())
                 .show(ctx, |ui| {
