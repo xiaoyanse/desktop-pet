@@ -1,5 +1,6 @@
 use crate::domain::config::{Config, Metric};
 use crate::ui::common::{
+    components::layout,
     icons::{self, Icon},
     theme, widgets,
 };
@@ -36,9 +37,9 @@ pub fn show(
     ui.add_space(16.0);
     ui.horizontal(|ui| {
         for (label, color) in [
-            ("正常", Color32::from_rgb(91, 210, 153)),
-            ("注意", Color32::from_rgb(248, 200, 82)),
-            ("高压", Color32::from_rgb(255, 102, 112)),
+            ("正常", theme::ACCENT),
+            ("注意", theme::WARNING),
+            ("高压", theme::DANGER),
         ] {
             let (r, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
             ui.painter().circle_filled(r.center(), 3.0, color);
@@ -109,16 +110,7 @@ fn list(
             continue;
         };
         ui.push_id(row.metric, |ui| {
-            let (rect, _) = ui
-                .allocate_exact_size(egui::vec2(ui.available_width(), 52.0), egui::Sense::hover());
-            ui.painter().line_segment(
-                [rect.left_top(), rect.right_top()],
-                egui::Stroke::new(1.0_f32, theme::LINE),
-            );
-            if ui.rect_contains_pointer(rect) {
-                ui.painter()
-                    .rect_filled(rect, 8, Color32::from_white_alpha(7));
-            }
+            let rect = layout::row(ui, 52.0);
             widgets::switch(
                 &mut cell(ui, rect, &widths, 0),
                 &mut row.enabled,

@@ -1,6 +1,7 @@
 pub mod desktop;
 pub mod diagnostics;
 pub mod fonts;
+pub mod local_time;
 pub mod memory;
 pub mod monitoring;
 pub mod native;

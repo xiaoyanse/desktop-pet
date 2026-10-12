@@ -184,7 +184,10 @@
     "save-local",
     "screenshot",
     "capture-annotate",
-    "pinned-image"
+    "pinned-image",
+    "notes",
+    "todo",
+    "reminder"
   ],
   "background": {
     "file": "workbench-material-v2.png",

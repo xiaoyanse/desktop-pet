@@ -1,4 +1,8 @@
-use super::{artwork, theme};
+use super::{
+    artwork,
+    components::surface::{self, Role},
+    theme,
+};
 use eframe::egui::{self, Color32, Vec2};
 
 #[derive(Clone, Copy)]
@@ -33,6 +37,10 @@ pub enum Icon {
     Screenshot,
     Annotate,
     PinnedImage,
+    Note,
+    Todo,
+    Reminder,
+    Edit,
 }
 
 impl Icon {
@@ -67,6 +75,10 @@ impl Icon {
             Self::Screenshot => "screenshot",
             Self::Annotate => "capture-annotate",
             Self::PinnedImage => "pinned-image",
+            Self::Note => "notes",
+            Self::Todo => "todo",
+            Self::Reminder => "reminder",
+            Self::Edit => "capture-annotate",
         }
     }
 }
@@ -88,15 +100,12 @@ pub fn sized_button(ui: &mut egui::Ui, icon: Icon, tip: &str, size: f32) -> egui
     );
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), tip));
-    if response.hovered() || response.has_focus() {
-        ui.painter().rect_filled(rect, 8, theme::HOVER);
-        ui.painter().rect_stroke(
-            rect,
-            8,
-            egui::Stroke::new(1.0_f32, theme::LINE),
-            egui::StrokeKind::Inside,
-        );
-    }
+    surface::paint(
+        ui,
+        &response,
+        Role::Quiet,
+        theme::CONTROL_RADIUS.min((size * 0.3) as u8),
+    );
     draw(
         ui.painter(),
         rect.shrink(2.0),

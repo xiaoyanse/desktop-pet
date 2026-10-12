@@ -1,5 +1,7 @@
 # 分层架构与扩展约定
 
+阶段十九增加 `domain/office`、`application/office`、`interfaces/office`、`infrastructure/storage/office` 和 `windows/local_time`，遵循原有依赖方向。办公列表/编辑/提醒放在 `ui/work_tools/office`，不继续平铺在UI根目录。共用基础组件进一步归组到 `ui/common/components/{surface,fields,selection,status,layout}`；既有actions/icons/widgets复用该层，业务页面不再各自实现皮肤。设计契约见《基础组件设计》，存储与提醒边界见《便签与待办》。开发合成预览由bootstrap装配内存数据并读取自有渲染缓冲，UI侧只绘制生产组件，不放宽禁止UI读磁盘/调用系统API的规则。
+
 ## 边界
 
 截图沿用相同五层：`domain/screenshot` 保存坐标、透明遮罩和有界批注；`interfaces/screenshot` 定义捕获/输出；`application/screenshot` 管理单任务、取消、失败保留旧图与输出；Windows `screenshot/selector` 负责物理坐标选区和窗口识别，storage `screenshots` 编码 PNG 并以不覆盖目标的原生移动发布；UI `work_tools/screenshot` 分入口/工具栏/画布/预览/贴图，`monitor/screenshot` 负责隐藏和恢复自己的窗口。原图 Arc 共享，图片≤128 MiB、批注≤128项且绘制工作量有上限；预览纹理边长≤1536及设备限制，导出保留原始尺寸。不是常驻录屏，不使用 Node/Python，也不采集启动参数。

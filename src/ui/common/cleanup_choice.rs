@@ -1,5 +1,6 @@
 use super::{
     actions, artwork,
+    components::layout,
     icons::{self, Icon},
     theme,
 };
@@ -18,8 +19,8 @@ pub fn profiles(ui: &mut egui::Ui, config: &mut CleanupConfig, enabled: bool) ->
                 let selected = current == Some(profile);
                 let color = match profile {
                     Profile::Light => theme::ACCENT,
-                    Profile::Medium => Color32::from_rgb(248, 200, 82),
-                    Profile::Heavy => Color32::from_rgb(255, 128, 137),
+                    Profile::Medium => theme::WARNING,
+                    Profile::Heavy => theme::DANGER,
                 };
                 let response = profile_card(column, profile, selected, color);
                 if response.clicked() {
@@ -166,7 +167,7 @@ pub fn review(ui: &mut egui::Ui, review: &mut Review, enabled: bool) -> Option<C
             ui.label(RichText::new("确认本次清理").size(16.0).strong());
             ui.label(operation_names(operations));
             ui.colored_label(
-                Color32::from_rgb(248, 200, 82),
+                theme::WARNING,
                 if operations == [crate::domain::cleanup::Operation::LowStandby] {
                     "缓存原本也属于可用内存，效果取决于当前状态。"
                 } else if low_impact {
@@ -194,12 +195,7 @@ pub fn review(ui: &mut egui::Ui, review: &mut Review, enabled: bool) -> Option<C
 pub fn modal(ctx: &egui::Context, pending: &mut Review, enabled: bool) -> Option<CleanupConfig> {
     pending.operations()?;
     let dialog = egui::Modal::new(egui::Id::new("cleanup-confirmation"))
-        .frame(
-            egui::Frame::new()
-                .fill(theme::SURFACE)
-                .corner_radius(18)
-                .inner_margin(20),
-        )
+        .frame(layout::dialog_frame())
         .backdrop_color(Color32::from_black_alpha(145))
         .show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 96.0).min(480.0));

@@ -43,7 +43,7 @@ impl MonitorApp {
                 Action::PetReact => self.pets.react(false),
                 Action::PetDrop => self.pets.react(true),
                 Action::Cleanup => self.flyout.open(),
-                Action::Exit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                Action::Exit => self.request_exit(ctx),
             }
         }
     }

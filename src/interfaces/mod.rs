@@ -1,6 +1,7 @@
 mod cleanup;
 mod desktop;
 mod monitoring;
+mod office;
 mod report;
 mod screenshot;
 mod storage;
@@ -8,6 +9,7 @@ mod storage;
 pub use cleanup::MemoryCleaner;
 pub use desktop::{DesktopAction, DesktopFactory, DesktopSession, FontSource};
 pub use monitoring::{ResourceSampler, SamplerFactory};
+pub use office::{LocalTime, OfficeStore};
 pub use report::{ReportCollector, ReportStore};
 pub use screenshot::{ScreenCapture, ScreenshotOutput};
 use std::sync::Arc;

@@ -1,5 +1,6 @@
 pub mod cleanup;
 pub mod monitoring;
+pub mod office;
 pub mod report;
 pub mod screenshot;
 pub mod work_timer;
@@ -16,6 +17,8 @@ pub struct Dependencies {
     pub report_store: std::sync::Arc<dyn crate::interfaces::ReportStore>,
     pub screen_capture: std::sync::Arc<dyn crate::interfaces::ScreenCapture>,
     pub screenshot_output: std::sync::Arc<dyn crate::interfaces::ScreenshotOutput>,
+    pub office_store: std::sync::Arc<dyn crate::interfaces::OfficeStore>,
+    pub local_time: std::sync::Arc<dyn crate::interfaces::LocalTime>,
 }
 
 pub struct Services {
@@ -25,4 +28,5 @@ pub struct Services {
     pub timer: work_timer::WorkTimer,
     pub report: report::ReportService,
     pub screenshot: screenshot::ScreenshotService,
+    pub office: office::OfficeService,
 }

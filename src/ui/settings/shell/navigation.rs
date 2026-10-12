@@ -1,6 +1,7 @@
 use crate::domain::{config::Config, resources::Snapshot};
 use crate::ui::common::{
-    artwork, glass,
+    artwork,
+    components::surface::{self, Role},
     icons::{self, Icon},
     theme,
 };
@@ -45,7 +46,9 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 theme::MUTED,
             );
             ui.add_space(20.0);
-            let row_height = ((ui.available_height() - 68.0 - 9.0 * 15.0) / 9.0).clamp(24.0, 60.0);
+            let spacing = ui.spacing().item_spacing.y;
+            ui.spacing_mut().item_spacing.y = 0.0;
+            let row_height = ((ui.available_height() - 68.0 - 10.0 * 8.0) / 10.0).clamp(24.0, 60.0);
             for (index, icon, name) in [
                 (0, Icon::Monitor, "监测项目"),
                 (1, Icon::Palette, "外观与宠物"),
@@ -56,6 +59,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 (6, Icon::Timer, "工作计时"),
                 (7, Icon::Report, "诊断报告"),
                 (8, Icon::Screenshot, "截图与贴图"),
+                (9, Icon::Note, "便签与待办"),
             ] {
                 let (rect, _) = ui.allocate_exact_size(
                     egui::vec2(ui.available_width(), row_height),
@@ -70,27 +74,16 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                     egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name)
                 });
                 let selected = tab == index;
-                if selected || response.hovered() || response.has_focus() {
-                    ui.painter().rect_filled(
-                        rect,
-                        12,
-                        if selected {
-                            Color32::from_rgba_unmultiplied(113, 132, 145, 50)
-                        } else {
-                            theme::HOVER
-                        },
-                    );
-                    ui.painter()
-                        .add(glass::finish(rect.shrink(1.0), 11.0, selected));
-                }
-                if selected {
-                    ui.painter().rect_stroke(
-                        rect,
-                        12,
-                        egui::Stroke::new(1.0_f32, theme::CHAMPAGNE.gamma_multiply(0.7)),
-                        egui::StrokeKind::Inside,
-                    );
-                }
+                surface::paint(
+                    ui,
+                    &response,
+                    if selected {
+                        Role::Selected
+                    } else {
+                        Role::Quiet
+                    },
+                    12,
+                );
                 let color = if selected {
                     Color32::WHITE
                 } else {
@@ -117,6 +110,7 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
                 }
                 ui.add_space(8.0);
             }
+            ui.spacing_mut().item_spacing.y = spacing;
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
                 ui.weak(format!("每 {} 秒更新", config.seconds));
                 ui.horizontal(|ui| {
@@ -142,12 +136,21 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
             "整理资源现场，查看进程来源，保留一份可分享的快照。",
         ),
         8 => ("截图与贴图", "选择画面、标出重点，让参考随手可见。"),
+        9 => ("便签与待办", "把想法留在本地，让下一步按时出现。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
     ui.label(RichText::new(title).size(34.0).strong());
     ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
+        if tab == 9 {
+            ui.label(
+                RichText::new("本地保存 · 到期提醒 · 随手查找")
+                    .size(12.0)
+                    .color(theme::CHAMPAGNE),
+            );
+            return;
+        }
         if tab == 8 {
             ui.label(
                 RichText::new("四种选区 · 本地批注 · 置顶参考")
@@ -234,7 +237,7 @@ mod tests {
                 })
                 .unwrap()
         };
-        let last = bounds("截图与贴图");
+        let last = bounds("便签与待办");
         let footer = bounds("本机监测");
         assert!(
             last.bottom() + 12.0 < footer.top(),

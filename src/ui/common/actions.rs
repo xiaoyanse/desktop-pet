@@ -1,43 +1,34 @@
 use super::{
-    glass,
+    components::surface::{self, Role},
     icons::{self, Icon},
     theme,
 };
 use eframe::egui::{self, Color32};
 
 pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egui::Response {
+    primary_role(ui, icon, label, enabled, Role::Primary)
+}
+
+pub fn danger(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egui::Response {
+    primary_role(ui, icon, label, enabled, Role::Danger)
+}
+
+fn primary_role(
+    ui: &mut egui::Ui,
+    icon: Icon,
+    label: &str,
+    enabled: bool,
+    role: Role,
+) -> egui::Response {
     let response = ui.add_enabled(
         enabled,
         egui::Button::new("")
-            .fill(if enabled {
-                Color32::from_rgb(62, 77, 89)
-            } else {
-                Color32::from_rgb(43, 58, 70)
-            })
-            .stroke(egui::Stroke::new(
-                1.0_f32,
-                if enabled {
-                    theme::CHAMPAGNE.gamma_multiply(0.65)
-                } else {
-                    theme::LINE
-                },
-            ))
-            .corner_radius(10)
+            .frame(false)
             .min_size(egui::vec2(ui.available_width(), 48.0)),
     );
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
-    if enabled {
-        ui.painter().add(glass::finish(
-            response.rect.shrink(1.0),
-            9.0,
-            response.hovered() || response.has_focus(),
-        ));
-    }
-    let foreground = if enabled {
-        theme::TEXT
-    } else {
-        Color32::from_rgb(137, 154, 169)
-    };
+    surface::paint(ui, &response, role, theme::CONTROL_RADIUS);
+    let foreground = surface::foreground(&response);
     icons::draw(
         ui.painter(),
         egui::Rect::from_center_size(
@@ -51,7 +42,7 @@ pub fn primary(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> egu
             Color32::from_white_alpha(75)
         },
     );
-    ui.painter().text(
+    ui.painter().with_clip_rect(response.rect).text(
         egui::pos2(response.rect.left() + 50.0, response.rect.center().y),
         egui::Align2::LEFT_CENTER,
         label,
@@ -74,19 +65,13 @@ pub fn secondary(ui: &mut egui::Ui, icon: Icon, label: &str) -> egui::Response {
     let width = (text.size().x + 50.0).max(110.0).min(ui.available_width());
     let response = ui.add(
         egui::Button::new("")
-            .corner_radius(8)
+            .frame(false)
             .min_size(egui::vec2(width, 36.0)),
     );
     response.widget_info(|| {
         egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
     });
-    if ui.is_enabled() {
-        ui.painter().add(glass::finish(
-            response.rect.shrink(1.0),
-            7.0,
-            response.has_focus(),
-        ));
-    }
+    surface::paint(ui, &response, Role::Secondary, theme::CONTROL_RADIUS);
     icons::draw(
         ui.painter(),
         egui::Rect::from_center_size(

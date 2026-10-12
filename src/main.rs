@@ -20,6 +20,17 @@ use interfaces::{ReportCollector, ResourceSampler, SettingsStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|a| a == "--office-preview") {
+        let Some(folder) = args.get(2) else {
+            native::message("合成预览需要尚不存在的绝对输出目录");
+            return;
+        };
+        if let Err(error) = bootstrap::office_preview::run(std::path::Path::new(folder)) {
+            native::message(&error);
+            std::process::exit(1);
+        }
+        return;
+    }
     if let Some(index) = args
         .iter()
         .position(|a| a == "--screenshot-lifecycle-probe")
@@ -152,6 +163,10 @@ fn main() {
         screenshot_output: std::sync::Arc::new(
             infrastructure::storage::screenshots::LocalScreenshots,
         ),
+        office_store: std::sync::Arc::new(
+            infrastructure::storage::office::LocalOfficeStore::default(),
+        ),
+        local_time: std::sync::Arc::new(infrastructure::windows::local_time::WindowsLocalTime),
     });
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_title("桌面资源监视器")

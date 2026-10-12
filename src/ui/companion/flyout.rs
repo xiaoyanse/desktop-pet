@@ -26,6 +26,8 @@ pub enum Action {
     Timer,
     Report,
     Screenshot,
+    Notes,
+    Tasks,
 }
 pub struct Flyout {
     pub pinned: bool,

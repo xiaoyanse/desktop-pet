@@ -28,6 +28,7 @@ pub struct Settings {
     pets: pet::Sprites,
     report_page: crate::ui::work_tools::diagnostic_report::Page,
     pub screenshot_page: crate::ui::work_tools::screenshot::Page,
+    office_page: crate::ui::work_tools::office::Page,
 }
 impl Settings {
     pub fn open_cleanup(&mut self) {
@@ -45,6 +46,11 @@ impl Settings {
     pub fn open_screenshot(&mut self) {
         self.tab = 8;
         self.open = true;
+    }
+    pub fn open_office(&mut self, kind: crate::domain::office::Kind) {
+        self.tab = 9;
+        self.open = true;
+        self.office_page.open(kind);
     }
     pub fn show(
         &mut self,
@@ -110,6 +116,8 @@ impl Settings {
                             if previous_folder != services.screenshot.folder {
                                 config.screenshot_folder = services.screenshot.folder.clone();
                             }
+                        } else if self.tab == 9 {
+                            self.office_page.show(ui, &mut services.office);
                         } else {
                             egui::ScrollArea::vertical()
                                 .id_salt(("settings-scroll", self.tab))
@@ -153,4 +161,43 @@ pub fn section(ui: &mut egui::Ui, title: &str, content: impl FnOnce(&mut egui::U
         content(ui);
     });
     ui.add_space(14.0);
+}
+
+pub(crate) fn office_preview(
+    ctx: &egui::Context,
+    page: &mut crate::ui::work_tools::office::Page,
+    service: &mut crate::application::office::OfficeService,
+) {
+    preview_shell(ctx, 9, |ui| page.show(ui, service));
+}
+
+pub(crate) fn controls_preview(
+    ctx: &egui::Context,
+    tab: usize,
+    config: &mut Config,
+    editing: &mut Option<Metric>,
+    filter: &mut Option<&'static str>,
+) {
+    preview_shell(ctx, tab, |ui| {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            if tab == 0 {
+                pages::metrics_page::show(ui, config, editing, filter);
+            } else {
+                pages::devices::show(ui, config, &Snapshot::default());
+            }
+        });
+    });
+}
+
+fn preview_shell(ctx: &egui::Context, tab: usize, contents: impl FnOnce(&mut egui::Ui)) {
+    let config = Config::default();
+    backdrop::show(ctx);
+    window_chrome::show(ctx);
+    navigation::navigation(ctx, tab, &config);
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().inner_margin(28))
+        .show(ctx, |ui| {
+            navigation::header(ui, tab, &config, &Snapshot::default());
+            contents(ui);
+        });
 }

@@ -102,6 +102,7 @@ impl DesktopSession for Desktop {
 }
 pub(super) fn services() -> Services {
     Services {
+        office: crate::application::office::tests::fake_service().0,
         screenshot: crate::application::screenshot::tests::fake_service().0,
         settings: Box::new(Memory),
         desktop: Box::new(Desktop),
@@ -198,6 +199,8 @@ fn edge_spiral_keeps_rendered_regions_and_action_labels_inside_its_viewport() {
                     "详细计时",
                     "打开诊断报告",
                     "打开设置",
+                    "便签",
+                    "待办",
                 ] {
                     for shape in &output.shapes {
                         if let Some(rect) = text_bounds(&shape.shape, label) {
@@ -464,6 +467,14 @@ fn office_controls_reuse_real_timer_and_categories_do_not_activate_other_tools()
     assert_eq!(
         click(&ctx, &mut content, &state, "详细计时").action,
         Some(Action::Timer)
+    );
+    assert_eq!(
+        click(&ctx, &mut content, &state, "便签").action,
+        Some(Action::Notes)
+    );
+    assert_eq!(
+        click(&ctx, &mut content, &state, "待办").action,
+        Some(Action::Tasks)
     );
     let result = click(&ctx, &mut content, &state, "工具");
     assert_eq!(result.group, Some(Group::Tools));

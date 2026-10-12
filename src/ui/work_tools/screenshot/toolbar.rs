@@ -4,6 +4,7 @@ use crate::{
     domain::screenshot::Tool,
     ui::common::{
         actions,
+        components::surface::{self, Role},
         icons::{self, Icon},
         theme,
     },
@@ -83,9 +84,16 @@ fn tool_button(ui: &mut egui::Ui, tool: Tool, selected: bool) -> egui::Response 
     let (rect, response) = ui.allocate_exact_size(egui::vec2(36.0, 36.0), egui::Sense::click());
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tool.label()));
-    if selected || response.hovered() {
-        ui.painter().rect_filled(rect, 8, theme::HOVER);
-    }
+    surface::paint(
+        ui,
+        &response,
+        if selected {
+            Role::Selected
+        } else {
+            Role::Quiet
+        },
+        theme::CONTROL_RADIUS,
+    );
     let r = rect.shrink(9.0);
     let stroke = egui::Stroke::new(
         2.0_f32,

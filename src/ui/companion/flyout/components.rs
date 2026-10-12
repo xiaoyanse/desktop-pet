@@ -25,7 +25,7 @@ pub fn rects(group: Group) -> &'static [Rect] {
             [270.0, 140.0, 510.0, 344.0],
             [265.0, 350.0, 510.0, 458.0],
         ],
-        Group::Office => &[[250.0, 133.0, 510.0, 340.0]],
+        Group::Office => &[[250.0, 133.0, 510.0, 340.0], [270.0, 16.0, 510.0, 124.0]],
         Group::Tools => &[[270.0, 75.0, 510.0, 250.0], [270.0, 262.0, 510.0, 446.0]],
     }
 }
@@ -56,7 +56,40 @@ pub fn show(
                 }
             });
         }
-        (Group::Office, _) => timer(ui, content, action),
+        (Group::Office, 0) => timer(ui, content, action),
+        (Group::Office, _) => {
+            ui.label(RichText::new("便签与待办").size(14.0).strong());
+            let pending = content
+                .services
+                .office
+                .book
+                .items
+                .iter()
+                .filter(|i| i.kind == crate::domain::office::Kind::Task && !i.done)
+                .count();
+            ui.label(
+                RichText::new(format!("{pending} 项行动待完成"))
+                    .size(12.0)
+                    .color(theme::ACCENT),
+            );
+            ui.horizontal(|ui| {
+                let width = (ui.available_width() - 8.0) / 2.0;
+                for (icon, label, next) in [
+                    (Icon::Note, "便签", Action::Notes),
+                    (Icon::Todo, "待办", Action::Tasks),
+                ] {
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(width, 36.0),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            if actions::secondary(ui, icon, label).clicked() {
+                                *action = Some(next);
+                            }
+                        },
+                    );
+                }
+            });
+        }
         (Group::Tools, 0) => {
             let (_, r) = ui.allocate_space(egui::vec2(40.0, 40.0));
             icons::draw(ui.painter(), r, Icon::Report, Color32::WHITE);

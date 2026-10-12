@@ -7,6 +7,7 @@ use crate::{
     },
     ui::common::{
         actions,
+        components::fields,
         icons::{self, Icon},
         theme,
     },
@@ -66,11 +67,12 @@ pub fn show(ui: &mut egui::Ui, page: &mut Page, document: &Document) {
                     .color(theme::MUTED),
             );
             let mut text = document.markdown.as_str();
-            ui.add(
+            fields::entry(
+                ui,
                 egui::TextEdit::multiline(&mut text)
-                    .font(egui::TextStyle::Monospace)
                     .desired_width(f32::INFINITY)
-                    .frame(false),
+                    .frame(true),
+                false,
             );
         });
         return;

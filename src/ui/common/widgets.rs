@@ -1,4 +1,5 @@
 use super::{
+    components::selection,
     icons::{self, Icon},
     theme,
 };
@@ -37,9 +38,9 @@ pub fn switch(ui: &mut egui::Ui, value: &mut bool, label: &str) -> egui::Respons
         egui::vec2(32.0, 18.0),
     );
     let fill = if *value {
-        theme::CHAMPAGNE
+        theme::ACCENT
     } else {
-        Color32::from_rgb(60, 75, 89)
+        theme::PROGRESS_TRACK
     };
     ui.painter().rect_filled(
         track,
@@ -155,28 +156,7 @@ pub fn integer(
 }
 
 pub fn tab(ui: &mut egui::Ui, label: &str, selected: bool, width: f32) -> egui::Response {
-    ui.add_sized(
-        [width, 34.0],
-        egui::Button::new(RichText::new(label).size(12.0).color(if selected {
-            theme::ACCENT
-        } else {
-            theme::MUTED
-        }))
-        .fill(if selected {
-            Color32::from_rgba_unmultiplied(156, 168, 172, 35)
-        } else {
-            Color32::TRANSPARENT
-        })
-        .stroke(egui::Stroke::new(
-            1.0_f32,
-            if selected {
-                theme::CHAMPAGNE.gamma_multiply(0.65)
-            } else {
-                Color32::TRANSPARENT
-            },
-        ))
-        .corner_radius(7),
-    )
+    selection::choice(ui, label, selected, width)
 }
 
 #[cfg(test)]

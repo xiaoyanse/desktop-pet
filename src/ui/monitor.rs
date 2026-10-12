@@ -4,6 +4,7 @@ use super::{
     monitoring::{controls, details, surface},
 };
 mod actions;
+mod office;
 mod screenshot;
 pub(crate) use screenshot::restore_root as restore_screenshot_root;
 pub(crate) use screenshot::suspend_root as suspend_screenshot_root;
@@ -46,6 +47,7 @@ pub struct MonitorApp {
     pet_hover: bool,
     screenshot_pending: Option<(crate::domain::screenshot::Mode, Instant)>,
     screenshot_hidden: bool,
+    exit_after_office: bool,
 }
 impl MonitorApp {
     pub fn open_settings(&mut self) {
@@ -76,6 +78,11 @@ impl MonitorApp {
             .unwrap_or(0);
         let wake: crate::interfaces::Wake = Arc::new(move || ctx.request_repaint());
         let mut services = Services {
+            office: crate::application::office::OfficeService::new(
+                dependencies.office_store,
+                dependencies.local_time,
+                wake.clone(),
+            ),
             screenshot: crate::application::screenshot::ScreenshotService::new(
                 dependencies.screen_capture,
                 dependencies.screenshot_output,
@@ -129,6 +136,7 @@ impl MonitorApp {
             pet_hover: false,
             screenshot_pending: None,
             screenshot_hidden: false,
+            exit_after_office: false,
         }
     }
     fn configure(&mut self) {
@@ -346,11 +354,13 @@ impl eframe::App for MonitorApp {
         self.receive(ctx);
         self.services.timer.tick(Instant::now());
         self.services.report.tick();
+        self.office_tick(ctx);
         if self.screenshot_tick(ctx) {
             return;
         }
         self.card(ctx);
         self.timer_feedback(ctx);
+        let office_notice = self.office_feedback(ctx);
         self.flyout.settings_closed(self.settings.open);
         if std::mem::take(&mut self.settings.preview_quick) {
             self.flyout.open_preview();
@@ -385,6 +395,12 @@ impl eframe::App for MonitorApp {
             Some(flyout::Action::Timer) => self.settings.open_timer(),
             Some(flyout::Action::Report) => self.settings.open_report(),
             Some(flyout::Action::Screenshot) => self.settings.open_screenshot(),
+            Some(flyout::Action::Notes) => {
+                self.settings.open_office(crate::domain::office::Kind::Note)
+            }
+            Some(flyout::Action::Tasks) => {
+                self.settings.open_office(crate::domain::office::Kind::Task)
+            }
             None => {}
         }
         if let Some(warning) = self.flyout.warning.take() {
@@ -399,7 +415,11 @@ impl eframe::App for MonitorApp {
             &mut self.services,
         );
         self.screenshot_ui(ctx);
-        if self.flyout.active() || self.settings.open || self.services.screenshot.pinned.is_some() {
+        if self.flyout.active()
+            || self.settings.open
+            || self.services.screenshot.pinned.is_some()
+            || office_notice
+        {
             self.services.desktop.configure_auxiliary();
         }
         if settings_changed {

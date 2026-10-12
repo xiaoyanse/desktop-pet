@@ -3,6 +3,7 @@ use crate::{
         config::Config,
         resources::{Device, Snapshot},
     },
+    ui::common::components::selection,
     ui::settings::section,
 };
 use eframe::egui;
@@ -49,13 +50,21 @@ fn choose(ui: &mut egui::Ui, id: &str, current: &mut String, devices: &[Device],
             .map(|d| d.name.clone())
             .unwrap_or_else(|| format!("{current}（当前未枚举）"))
     };
-    egui::ComboBox::from_id_salt(id)
-        .width(ui.available_width() - 24.0)
-        .selected_text(label)
-        .show_ui(ui, |ui| {
-            ui.selectable_value(current, String::new(), automatic);
-            for device in devices {
-                ui.selectable_value(current, device.id.clone(), &device.name);
+    selection::dropdown(ui, id, &label, |ui| {
+        if selection::choice(ui, automatic, current.is_empty(), ui.available_width()).clicked() {
+            current.clear();
+        }
+        for device in devices {
+            if selection::choice(
+                ui,
+                &device.name,
+                *current == device.id,
+                ui.available_width(),
+            )
+            .clicked()
+            {
+                *current = device.id.clone();
             }
-        });
+        }
+    });
 }

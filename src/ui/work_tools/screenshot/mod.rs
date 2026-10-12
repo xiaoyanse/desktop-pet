@@ -7,7 +7,12 @@ mod toolbar;
 use crate::{
     application::screenshot::ScreenshotService,
     domain::screenshot::{Mode, Tool},
-    ui::common::{actions, icons::Icon, theme},
+    ui::common::{
+        actions,
+        components::{fields, selection},
+        icons::Icon,
+        theme,
+    },
 };
 use eframe::egui::{self, RichText};
 
@@ -52,12 +57,7 @@ impl Page {
                         egui::vec2(width, 62.0),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
-                            let text = RichText::new(mode.label()).size(14.0);
-                            if ui
-                                .add_sized(
-                                    [width, 40.0],
-                                    egui::Button::new(text).selected(self.mode == mode),
-                                )
+                            if selection::choice(ui, mode.label(), self.mode == mode, width)
                                 .on_hover_text(mode.description())
                                 .clicked()
                             {
@@ -94,12 +94,14 @@ impl Page {
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             ui.label(RichText::new("保存到").color(theme::MUTED));
-            ui.add_enabled(
-                !service.busy(),
-                egui::TextEdit::singleline(&mut service.folder)
-                    .desired_width(ui.available_width())
-                    .hint_text("绝对路径目录，如 E:\\Screenshots"),
-            );
+            ui.add_enabled_ui(!service.busy(), |ui| {
+                fields::line(
+                    ui,
+                    &mut service.folder,
+                    "绝对路径目录，如 E:\\Screenshots",
+                    32768,
+                )
+            });
         });
         if !service.message.is_empty() {
             ui.label(
