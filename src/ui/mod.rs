@@ -1,7 +1,9 @@
 mod common;
 mod companion;
+pub(crate) mod development;
 pub mod monitor;
 mod monitoring;
+pub(crate) mod rendering;
 mod settings;
 mod work_tools;
 pub(crate) use common::fonts::configure_atlas as configure_framework_atlas;

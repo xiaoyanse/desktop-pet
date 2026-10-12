@@ -88,6 +88,19 @@ fn main() {
         return;
     }
     let open_settings = args.iter().any(|a| a == "--settings");
+    if let Some(index) = args.iter().position(|a| a == "--software-render-probe") {
+        let Some(path) = args.get(index + 1).filter(|path| !path.starts_with("--")) else {
+            native::message("软件绘制实验需要一个尚不存在的输出文件路径");
+            return;
+        };
+        let Some(_instance) = native::single_instance(false) else {
+            return;
+        };
+        if let Err(error) = bootstrap::software_experiment::run(std::path::Path::new(path)) {
+            native::message(&error);
+        }
+        return;
+    }
     let resource_probe = if let Some(index) = args.iter().position(|a| a == "--ui-resource-probe") {
         let Some(path) = args.get(index + 1).filter(|path| !path.starts_with("--")) else {
             native::message("开发资源探针需要一个尚不存在的输出文件路径");
