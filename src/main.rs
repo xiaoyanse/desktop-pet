@@ -20,6 +20,48 @@ use interfaces::{ReportCollector, ResourceSampler, SettingsStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args
+        .get(1)
+        .is_some_and(|arg| arg == "--update-check-probe" || arg == "--update-download-probe")
+    {
+        let result = (|| {
+            let source = args.get(2).ok_or("更新探针需要 GitHub 或 Gitee 来源")?;
+            let output = args
+                .get(3)
+                .map(std::path::PathBuf::from)
+                .ok_or("更新探针需要新的输出文件")?;
+            if !output.is_absolute() {
+                return Err("更新探针输出必须为绝对路径".to_string());
+            }
+            let report =
+                infrastructure::update::probe(source, args[1] == "--update-download-probe")?;
+            let data = serde_json::to_vec_pretty(&report).map_err(|_| "更新探针结果无法编码")?;
+            use std::io::Write;
+            std::fs::File::options()
+                .write(true)
+                .create_new(true)
+                .open(&output)
+                .and_then(|mut file| file.write_all(&data))
+                .map_err(|_| "更新探针输出不可写".to_string())
+                .map(|_| ())
+        })();
+        if let Err(error) = result {
+            native::message(&error);
+            std::process::exit(1);
+        }
+        return;
+    }
+    if args.get(1).is_some_and(|a| a == "--apply-update") {
+        if let Err(error) = infrastructure::update::helper(&args[2..]) {
+            if args.iter().any(|arg| arg == "--quiet-helper") {
+                eprintln!("{error}");
+            } else {
+                native::message(&error);
+            }
+            std::process::exit(1);
+        }
+        return;
+    }
     if args.get(1).is_some_and(|a| a == "--microphone-probe") {
         let result = args
             .get(2)
@@ -126,6 +168,11 @@ fn main() {
         native::request_instance(false, true);
         return;
     }
+    let update_ack = args
+        .iter()
+        .position(|a| a == "--update-ack")
+        .and_then(|index| args.get(index + 1))
+        .map(std::path::PathBuf::from);
     let open_settings = args.iter().any(|a| a == "--settings");
     if let Some(index) = args.iter().position(|a| a == "--software-render-probe") {
         let Some(path) = args.get(index + 1).filter(|path| !path.starts_with("--")) else {
@@ -157,9 +204,19 @@ fn main() {
     let Some(_instance) = native::single_instance(open_settings) else {
         return;
     };
+    if update_ack.is_none() && !args.iter().any(|arg| arg.starts_with("--")) {
+        match infrastructure::update::pending() {
+            Ok(true) => return,
+            Ok(false) => {}
+            Err(error) => native::message(&error),
+        }
+    }
     let (config, warning) = JsonSettings.load();
     let snapping = config.snap_edges;
     let dependencies = (!renderer_baseline).then(|| application::Dependencies {
+        updates: Some(std::sync::Arc::new(
+            infrastructure::update::RepositoryUpdater::new(update_ack),
+        )),
         sampler: Box::new(|| Box::new(Sampler::new())),
         settings: Box::new(JsonSettings),
         cleaner: Box::new(cleanup::WindowsCleaner),

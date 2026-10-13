@@ -102,6 +102,7 @@ impl DesktopSession for Desktop {
 }
 pub(crate) fn services() -> Services {
     Services {
+        updates: None,
         clipboard: crate::application::clipboard::tests::fake_service().0,
         meeting: crate::application::meeting::tests::fake_service().0,
         office: crate::application::office::tests::fake_service().0,
@@ -366,7 +367,7 @@ fn mirrored_spiral_actions_reach_the_same_use_cases_at_all_four_corners() {
     ] {
         let ctx = egui::Context::default();
         crate::ui::common::theme::setup(&ctx);
-        crate::ui::install_test_font(&ctx, crate::infrastructure::windows::fonts::load().unwrap());
+        crate::ui::install_test_font(&ctx, crate::integration_tests::font_source());
         let config = Config::default();
         let snapshot = Snapshot::default();
         let mut services = services();

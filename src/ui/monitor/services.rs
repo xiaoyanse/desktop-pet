@@ -10,6 +10,9 @@ pub fn build(
     config: &Config,
 ) -> (Services, SamplerFactory) {
     let mut services = Services {
+        updates: dependencies
+            .updates
+            .map(|backend| crate::application::update::UpdateService::new(backend, wake.clone())),
         clipboard: crate::application::clipboard::ClipboardService::new(
             dependencies.clipboard,
             wake.clone(),

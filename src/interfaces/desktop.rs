@@ -13,6 +13,7 @@ pub enum DesktopAction {
     Unlock,
     Passthrough,
     Settings,
+    Updates,
     ToggleMode,
     Pet,
     PetReact,

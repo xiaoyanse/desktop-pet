@@ -188,6 +188,7 @@ unsafe extern "system" fn window_proc(
                             &[
                                 (1, "恢复完整视图", super::menus::Glyph::Restore, true),
                                 (2, "设置", super::menus::Glyph::Settings, true),
+                                (8, "检查更新", super::menus::Glyph::Update, true),
                                 (5, "切换完整 / 精简视图", super::menus::Glyph::Compact, true),
                                 (7, "切换桌面宠物", super::menus::Glyph::Pet, true),
                                 (6, "快速清理", super::menus::Glyph::Memory, true),
@@ -203,6 +204,7 @@ unsafe extern "system" fn window_proc(
                         match selected {
                             1 => Some(Action::Unlock),
                             2 => Some(Action::Settings),
+                            8 => Some(Action::Updates),
                             6 => Some(Action::Cleanup),
                             3 => Some(Action::Exit),
                             4 if state.hotkey => Some(Action::Passthrough),

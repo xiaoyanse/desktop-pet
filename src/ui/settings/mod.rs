@@ -57,6 +57,10 @@ impl Settings {
         self.tab = 11;
         self.reveal();
     }
+    pub fn open_updates(&mut self) {
+        self.tab = 3;
+        self.reveal();
+    }
     pub fn meeting_visible(&self) -> bool {
         self.open && self.tab == 10
     }

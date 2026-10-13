@@ -18,5 +18,6 @@ pub use report::{ReportCollector, ReportStore};
 pub use screenshot::{ScreenCapture, ScreenshotOutput};
 use std::sync::Arc;
 pub use storage::{CleanupHistory, SettingsStore};
+pub mod update;
 
 pub type Wake = Arc<dyn Fn() + Send + Sync>;

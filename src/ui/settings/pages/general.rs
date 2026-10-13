@@ -5,7 +5,10 @@ use crate::{
 };
 use eframe::egui;
 
-pub fn show(ui: &mut egui::Ui, config: &mut Config, message: &mut String, services: &Services) {
+pub fn show(ui: &mut egui::Ui, config: &mut Config, message: &mut String, services: &mut Services) {
+    if let Some(updates) = &mut services.updates {
+        super::updates::show(ui, &mut config.updates, updates);
+    }
     section(ui, "刷新", |ui| {
         ui.horizontal(|ui| {
             let width = (ui.available_width().min(320.0) - 16.0) / 3.0;

@@ -4,3 +4,4 @@ pub(super) mod cleanup_page;
 pub(super) mod devices;
 pub(super) mod general;
 pub(super) mod metrics_page;
+pub(super) mod updates;

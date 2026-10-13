@@ -38,6 +38,13 @@ impl MonitorApp {
                     self.unlock(ctx);
                     self.settings.reveal();
                 }
+                Action::Updates => {
+                    self.unlock(ctx);
+                    self.settings.open_updates();
+                    if let Some(service) = &mut self.services.updates {
+                        service.check(&self.config.updates);
+                    }
+                }
                 Action::ToggleMode => self.toggle_mode(ctx),
                 Action::Pet => self.toggle_pet(ctx),
                 Action::PetReact => self.pets.react(false),
@@ -52,7 +59,12 @@ impl MonitorApp {
 fn interrupts_capture(action: Action) -> bool {
     matches!(
         action,
-        Action::Unlock | Action::Settings | Action::ToggleMode | Action::Pet | Action::Exit
+        Action::Unlock
+            | Action::Settings
+            | Action::Updates
+            | Action::ToggleMode
+            | Action::Pet
+            | Action::Exit
     )
 }
 

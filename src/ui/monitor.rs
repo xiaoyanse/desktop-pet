@@ -330,6 +330,35 @@ impl eframe::App for MonitorApp {
         self.office_tick(ctx);
         self.meeting_tick(ctx);
         self.services.clipboard.tick();
+        if let Some(updates) = &mut self.services.updates {
+            updates.tick(&self.config.updates);
+            if let Some(delay) = updates.next_wakeup() {
+                ctx.request_repaint_after(delay);
+            }
+            if updates.install_requested
+                && (self.services.screenshot.busy() || self.services.screenshot.document.is_some())
+            {
+                updates.install_requested = false;
+                self.message = "请先完成或关闭截图批注，再安装更新".into();
+            }
+            if updates.install_requested
+                && !self.services.office.busy()
+                && !self.capture_flow.hidden
+            {
+                match self
+                    .services
+                    .settings
+                    .save(&self.config)
+                    .and_then(|_| updates.install())
+                {
+                    Ok(()) => self.request_exit(ctx),
+                    Err(error) => {
+                        updates.install_requested = false;
+                        self.message = error;
+                    }
+                }
+            }
+        }
         if self.services.clipboard.stopping() || self.services.clipboard.copying() {
             ctx.request_repaint_after(Duration::from_millis(50));
         }

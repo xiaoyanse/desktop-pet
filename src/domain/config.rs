@@ -193,6 +193,7 @@ pub struct Config {
     pub meeting: super::meeting::MeetingConfig,
     pub clipboard: super::clipboard::ClipboardConfig,
     pub screenshot_folder: String,
+    pub updates: super::update::Preferences,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -251,6 +252,7 @@ impl Default for Config {
             meeting: super::meeting::MeetingConfig::default(),
             clipboard: super::clipboard::ClipboardConfig::default(),
             screenshot_folder: String::new(),
+            updates: Default::default(),
         }
     }
 }

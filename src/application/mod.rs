@@ -5,10 +5,12 @@ pub mod monitoring;
 pub mod office;
 pub mod report;
 pub mod screenshot;
+pub mod update;
 pub mod work_timer;
 use crate::interfaces::{DesktopSession, MemoryCleaner, SettingsStore};
 
 pub struct Dependencies {
+    pub updates: Option<std::sync::Arc<dyn crate::interfaces::update::UpdateBackend>>,
     pub sampler: crate::interfaces::SamplerFactory,
     pub settings: Box<dyn SettingsStore>,
     pub cleaner: Box<dyn MemoryCleaner>,
@@ -26,6 +28,7 @@ pub struct Dependencies {
 }
 
 pub struct Services {
+    pub updates: Option<update::UpdateService>,
     pub settings: Box<dyn SettingsStore>,
     pub desktop: Box<dyn DesktopSession>,
     pub cleaner: cleanup::CleanupService,

@@ -21,6 +21,7 @@ pub enum Glyph {
     Background,
     Border,
     Pet,
+    Update,
 }
 impl Glyph {
     fn asset(self) -> &'static str {
@@ -34,6 +35,7 @@ impl Glyph {
             Self::Background => "nav-monitor",
             Self::Border => "maximize",
             Self::Pet => "nav-appearance",
+            Self::Update => "nav-history",
         }
     }
 }

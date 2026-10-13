@@ -9,4 +9,5 @@ pub mod office;
 pub mod report;
 pub mod resources;
 pub mod screenshot;
+pub mod update;
 pub mod work_timer;
