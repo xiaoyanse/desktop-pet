@@ -62,5 +62,25 @@ E:\Temp\desktop-meter-delta-security-20261013/report.json。没有对其他程�
 | 增量 ZIP | 3130796 | d0fa2db6a6d9315f49cd2b69c0fc46536c6ccf9235bd7bd959626ab726b22536 |
 | 新程序 | 12257792 | 4ed6789587e19fc095a22b33efd6bb551c12205de3c3bb3511eec28a6ba66642 |
 
-增量比全量少约 40.2% 下载字节。安装器尚未签名。本地通过不替代公开发布和完整 GUI
-现场更新验收；公开链路结果随后追加。其他功能及后台自主任务仍暂停。
+增量比全量少约 40.2% 下载字节。安装器尚未签名。本地通过不替代完整 GUI
+现场更新验收。其他功能及后台自主任务仍暂停。
+
+## 公开发布与真实更新链路
+
+2026-10-13 已发布 [GitHub v0.2.1](https://github.com/xiaoyanse/desktop-pet/releases/tag/v0.2.1)
+与 [Gitee v0.2.1](https://gitee.com/xiaoyanse/desktop-pet/releases/tag/v0.2.1)。
+两边均包含安装 EXE、全量 ZIP、增量 ZIP 与 update-manifest.json；Gitee 另自动附带源码包。
+保留原 0.2.0，不覆盖已公开产物。main 源码及验证脚本已推送两仓库。
+
+E:\Temp\desktop-meter-update-public-0.2.1-20261013 保存最终生产程序的公开链路证据：
+
+- GitHub / Gitee 分别实际下载增量，transfer.json kind=delta，重建程序散列等于上表。
+- GitHub 故意替换探针内预期增量散列，实际增量校验失败，自动下载全量并重建；
+  kind=full，保留 deltaFallbackReason，正常结束。
+- 原已发布 0.2.0 程序分别通过两个来源下载 0.2.1 全量包，通过原解压/版本/程序校验；
+  证实新清单没有破坏旧客户端。旧版不会识别 delta，所以此处确实使用全量。
+- 两边安装 EXE 无令牌公开下载，字节数/散列与本地产物一致。
+- 所有五个下载探针的 payload/desktop-meter.exe SHA256 相同且正确；summary.json 全部 passed=true。
+
+没有安装这些下载任务，没有替换用户当前桌面实例；完整 GUI 自更新和普通安装向导点击
+属于现场验收范围。实际静默安装/卸载、生产差分解码、远端真实下载与隔离健康回退均已单独验证。
