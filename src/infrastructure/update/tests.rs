@@ -97,6 +97,67 @@ fn changed_original_hash_blocks_install_before_any_directory_moves() {
     assert!(root.join("payload").is_dir());
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn external_directory_lock_keeps_original_and_payload_and_reports_the_os_error() {
+    use windows_sys::Win32::{
+        Foundation::{CloseHandle, GENERIC_READ, INVALID_HANDLE_VALUE},
+        Storage::FileSystem::{
+            CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_READ, FILE_SHARE_WRITE,
+            OPEN_EXISTING,
+        },
+    };
+    struct Lock(windows_sys::Win32::Foundation::HANDLE);
+    impl Drop for Lock {
+        fn drop(&mut self) {
+            unsafe {
+                CloseHandle(self.0);
+            }
+        }
+    }
+    let root = temporary();
+    let target = root.join("application");
+    program(&target, b"old");
+    let payload = root.join("payload");
+    program(&payload, b"new");
+    let job = Job {
+        target: target.clone(),
+        old_hash: files::hash(&target.join("desktop-meter.exe")).unwrap(),
+        version: "0.2.0".into(),
+        new_hash: files::hash(&payload.join("desktop-meter.exe")).unwrap(),
+        nonce: "1234".into(),
+        parent: 1,
+    };
+    let path: Vec<_> = target
+        .as_os_str()
+        .to_string_lossy()
+        .encode_utf16()
+        .chain(Some(0))
+        .collect();
+    let handle = unsafe {
+        CreateFileW(
+            path.as_ptr(),
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            std::ptr::null_mut(),
+        )
+    };
+    assert_ne!(handle, INVALID_HANDLE_VALUE);
+    let lock = Lock(handle);
+    let error = install::replace(&root, &job).unwrap_err();
+    assert!(
+        error.contains("未替换文件") && error.contains("os error"),
+        "{error}"
+    );
+    assert_eq!(fs::read(target.join("desktop-meter.exe")).unwrap(), b"old");
+    assert_eq!(fs::read(payload.join("desktop-meter.exe")).unwrap(), b"new");
+    assert!(!root.join("application.previous-1234").exists());
+    drop(lock);
+    fs::remove_dir_all(root).unwrap();
+}
 fn make_zip(path: &std::path::Path, names: &[&str]) {
     let mut writer = zip::ZipWriter::new(fs::File::create(path).unwrap());
     for name in names {

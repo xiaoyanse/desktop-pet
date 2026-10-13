@@ -51,13 +51,15 @@ fn main() {
     }
     $oldHash = (Get-FileHash -LiteralPath (Join-Path $target 'desktop-meter.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
     $newHash = (Get-FileHash -LiteralPath (Join-Path $payload 'desktop-meter.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
-    $parent = Start-Process -FilePath (Join-Path $target 'desktop-meter.exe') -WindowStyle Hidden -PassThru
+    $parent = Start-Process -FilePath (Join-Path $target 'desktop-meter.exe') -WorkingDirectory $target -WindowStyle Hidden -PassThru
     $job = @{target=[IO.Path]::GetFullPath($target);old_hash=$oldHash;version='0.2.0';new_hash=$newHash;nonce=$nonce;parent=$parent.Id}
     $jobPath = Join-Path $stage 'job.json'
     $job | ConvertTo-Json | Set-Content -LiteralPath $jobPath -Encoding utf8NoBOM
     $helper = Join-Path $stage 'helper.exe'
     Copy-Item -LiteralPath $helperSource -Destination $helper
-    $helperProcess = Start-Process -FilePath $helper -ArgumentList @('--apply-update', ('"' + $jobPath + '"'), $parent.Id, '--quiet-helper') -WindowStyle Hidden -PassThru
+    # Deliberately inherit the application directory, matching Explorer/shortcut startup.
+    # The production helper must detach itself before attempting directory replacement.
+    $helperProcess = Start-Process -FilePath $helper -WorkingDirectory $target -ArgumentList @('--apply-update', ('"' + $jobPath + '"'), $parent.Id, '--quiet-helper') -WindowStyle Hidden -PassThru
     if (-not $helperProcess.WaitForExit(45000)) { $helperProcess.Kill(); throw '隔离更新辅助程序超时。' }
     Start-Sleep -Milliseconds 700
     $actualHash = (Get-FileHash -LiteralPath (Join-Path $target 'desktop-meter.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -66,7 +68,7 @@ fn main() {
     $valid = ($actualHash -eq $expectedHash) -and (Test-Path -LiteralPath $resultPath)
     if ($case -eq 'rollback') { $valid = $valid -and ((Get-Content -LiteralPath $counter -Raw).Trim() -eq '2') }
     if (-not $valid) { throw "隔离更新 $case 验证失败，保留 $stage 与 $testRoot 取证。" }
-    $results += [ordered]@{case=$case;passed=$valid;helperExitCode=$helperProcess.ExitCode;stage=$stage;target=$target;result=(Get-Content -LiteralPath $resultPath -Raw).Trim();currentHash=$actualHash}
+    $results += [ordered]@{case=$case;passed=$valid;helperExitCode=$helperProcess.ExitCode;initialHelperWorkingDirectory=$target;stage=$stage;target=$target;result=(Get-Content -LiteralPath $resultPath -Raw).Trim();currentHash=$actualHash}
 }
 $report = [ordered]@{helperSha256=(Get-FileHash -LiteralPath $helperSource -Algorithm SHA256).Hash;fixtures=$results;normalUserProcessesTouched=$false;scope='真实文件替换、辅助进程、新版确认与失败回退；候选子程序为隔离 Rust 程序，不等同于完整 GUI 更新现场验收。'}
 $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $testRoot 'report.json') -Encoding utf8NoBOM

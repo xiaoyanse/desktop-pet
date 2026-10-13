@@ -73,6 +73,7 @@ pub(super) fn launch(path: &Path) -> Result<(), String> {
     let helper = stage.join("helper.exe");
     fs::copy(&current, &helper).map_err(|_| "无法创建临时更新辅助程序")?;
     hidden(&helper)
+        .current_dir(&stage)
         .arg("--apply-update")
         .arg(path)
         .arg(job.parent.to_string())
@@ -189,16 +190,27 @@ pub(super) fn helper(args: &[String]) -> Result<(), String> {
     {
         return Err("更新辅助程序位置无效".into());
     }
-    wait_for_parent(&job)?;
-    let backup = replace(&stage, &job)?;
+    // Explorer and shortcuts start the app inside its own directory. That inherited
+    // directory handle blocks Windows from moving the directory even after the app exits.
+    std::env::set_current_dir(&stage)
+        .map_err(|error| format!("无法进入更新暂存目录，未替换文件：{error}"))?;
+    let result = apply(&stage, &job, &path);
+    if let Err(error) = &result {
+        let _ = fs::write(stage.join("result.txt"), format!("更新未完成：{error}"));
+    }
+    result
+}
+fn apply(stage: &Path, job: &Job, path: &Path) -> Result<(), String> {
+    wait_for_parent(job)?;
+    let backup = replace(stage, job)?;
     let mut child = match hidden(&executable(&job.target))
         .arg("--update-ack")
-        .arg(&path)
+        .arg(path)
         .spawn()
     {
         Ok(child) => child,
         Err(_) => {
-            rollback(&stage, &job, &backup)?;
+            rollback(stage, job, &backup)?;
             return Err("新版无法启动，已恢复原版".into());
         }
     };
@@ -228,7 +240,7 @@ pub(super) fn helper(args: &[String]) -> Result<(), String> {
     }
     let _ = child.kill();
     let _ = child.wait();
-    rollback(&stage, &job, &backup)?;
+    rollback(stage, job, &backup)?;
     Err("新版未完成启动确认，已恢复原版；用户配置未替换".into())
 }
 pub(super) fn replace(stage: &Path, job: &Job) -> Result<PathBuf, String> {
@@ -251,7 +263,8 @@ pub(super) fn replace(stage: &Path, job: &Job) -> Result<PathBuf, String> {
     if backup.exists() {
         return Err("旧版备份目录已存在，未替换文件".into());
     }
-    fs::rename(&job.target, &backup).map_err(|_| "原程序目录被占用或没有写入权限，未替换文件")?;
+    fs::rename(&job.target, &backup)
+        .map_err(|error| format!("原程序目录被占用或没有写入权限，未替换文件：{error}"))?;
     if fs::rename(&payload, &job.target).is_err() {
         fs::rename(&backup, &job.target)
             .map_err(|_| "更新被中断，请使用 previous 备份恢复应用目录")?;
