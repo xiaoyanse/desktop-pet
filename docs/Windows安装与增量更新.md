@@ -1,5 +1,24 @@
 # Windows 安装与增量更新
 
+## 0.2.3 目录占用修复版已发布（2026-10-13）
+
+用户这次0.2.1→0.2.2更新失败已完成现场恢复：只从暂存目录重新启动原已下载任务的辅助进程，0.2.2正常启动并收到健康确认，旧版备份保留；未改权限或关闭其他程序。根因、确定性复现、恢复步骤及原测试漏检分析见《在线更新目录占用修复》。恢复证据E:/Temp/desktop-meter-update-cwd-20261013/live-recovery.json。
+
+修复源码提交768d612234c07247237bdca89e2a84491d88d6b1。218项自动检查、格式、严格clippy、release通过，20页原生合成预览及程序/安装器六尺寸图标资源核验通过。E:/Temp/desktop-meter-update-native-20261013-211651/report.json验证最终生产helper在初始CWD为待更新目录的条件下，成功替换与失败回退均通过；外部目录句柄占用的单元回归确认失败不移动或删除文件。
+
+| 产物 | 字节 | SHA256 |
+| --- | ---: | --- |
+| 0.2.3 安装 EXE | 5877441 | 187f77d6b4df58bc6e8e77755825c30ad1b1306c2a08adc72e92359e1e4b3359 |
+| 0.2.3 全量 ZIP | 5320767 | 7c86e5042e401693eb78ea9dd58cb09ed9dd3acb0e847d9b7fc9623647965506 |
+| 0.2.2→0.2.3 增量 ZIP | 3120778 | 86864c8fc8428f5a2f6336c9a8a439ac5cb01740c4d2a09a4433568801ac6931 |
+| 0.2.3 程序 | 12343296 | e2009413ad6c067cd508f21f9e94b3375eac558a6b5dffa47aa7f22071838c05 |
+
+精确基线为原始0.2.2程序13a460c4c51dd1ebc62db4249733f3851f887a714e13fc3a3417dc66aeda0c81。增量下载字节比全量少41.3%，打包生产解码器重建散列一致。
+
+[GitHub v0.2.3](https://github.com/xiaoyanse/desktop-pet/releases/tag/v0.2.3)和[Gitee v0.2.3](https://gitee.com/xiaoyanse/desktop-pet/releases/tag/v0.2.3)已公开发布三类包及清单；GitHub非草稿且四文件尺寸回读正确，Gitee ID1203154及四附件名称回读齐全。0.2.2产物没有覆盖。原始0.2.2程序分别从两来源实际下载增量并重建正确0.2.3；最终0.2.3探针模拟增量散列错误，真实全量回退通过。三项全部passed=true、installed=false，证据E:/Temp/desktop-meter-update-public-0.2.3-20261013/summary.json及published-assets.json。
+
+当前用户实例仍为恢复后的0.2.2 PID35648，未替用户安装0.2.3。可以从当前实例检查新补丁；旧版从程序目录重新启动后若仍报错，可使用安装包一次升级或先从外部工作目录启动。新包不能提前修复旧EXE里的旧helper。未重跑会触碰现有安装和快捷方式的安装/卸载测试；安装器重新编译、发布、品牌资源已核验。完整0.2.3 GUI更新仍待用户操作验收，后台任务与其他扩展保持暂停。
+
 ## 0.2.2 已发布与增量测试（2026-10-13）
 
 本次四项体验修复的源码提交为268eefa2961f5c23c82ed2a28217058cebb4be62；217项检查、严格clippy、格式与release通过，20页原生合成预览完成。设置窗口、EXE与安装器均已补齐品牌图标；两个产物的六张图标资源逐张SHA256核验一致，证据evidence/settings-stage28-native01/packaged-icons.json。程序ProductVersion=0.2.2。
