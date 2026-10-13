@@ -119,6 +119,7 @@ fn ready_page_routes_immediate_install_intent_and_deferred_install_separately() 
             size: 100,
             sha256: "a".repeat(64),
             executable_sha256: "b".repeat(64),
+            delta: None,
         },
     });
     click(&ctx, &mut prefs, &mut service, "下次启动安装");

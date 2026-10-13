@@ -17,6 +17,7 @@ fn release() -> Release {
             size: 100,
             sha256: "a".repeat(64),
             executable_sha256: "b".repeat(64),
+            delta: None,
         },
     }
 }

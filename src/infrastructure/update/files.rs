@@ -132,9 +132,17 @@ pub(super) fn extract(
         }
         output.sync_all().map_err(|_| "更新文件同步失败")?;
     }
-    if seen.len() != FILES.len()
-        || !hash(&destination.join("desktop-meter.exe"))?.eq_ignore_ascii_case(expected_hash)
-    {
+    if seen.len() != FILES.len() {
+        return Err("更新包不完整".into());
+    }
+    validate_payload(destination, version, expected_hash)
+}
+pub(super) fn validate_payload(
+    destination: &Path,
+    version: &str,
+    expected_hash: &str,
+) -> Result<(), String> {
+    if !hash(&destination.join("desktop-meter.exe"))?.eq_ignore_ascii_case(expected_hash) {
         return Err("更新程序校验失败".into());
     }
     managed_target(destination)?;
@@ -152,11 +160,17 @@ pub(super) fn prepare(
     cancel: &AtomicBool,
     progress: &AtomicU64,
 ) -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|_| "无法确定当前程序")?;
+    prepare_for(release, &exe, cancel, progress)
+}
+pub(super) fn prepare_for(
+    release: &Release,
+    exe: &Path,
+    cancel: &AtomicBool,
+    progress: &AtomicU64,
+) -> Result<PathBuf, String> {
     release.manifest.validate(&release.version)?;
-    let exe = std::env::current_exe()
-        .map_err(|_| "无法确定当前程序")?
-        .canonicalize()
-        .map_err(|_| "当前程序不可访问")?;
+    let exe = exe.canonicalize().map_err(|_| "当前程序不可访问")?;
     let target = exe.parent().ok_or("当前程序路径无效")?.to_owned();
     managed_target(&target)?;
     let nonce = SystemTime::now()
@@ -169,20 +183,60 @@ pub(super) fn prepare(
     let stage = root.join(format!("stage-{nonce}"));
     fs::create_dir(&stage).map_err(|_| "更新暂存目录无法创建")?;
     let result = (|| {
-        let package = stage.join("package.zip");
-        super::download::run(&package, release, cancel, progress)?;
-        if !hash(&package)?.eq_ignore_ascii_case(&release.manifest.sha256) {
-            return Err("更新包 SHA256 校验失败".into());
+        let mut delta_error = None;
+        let mut incremental = false;
+        if let Some(delta) = &release.manifest.delta
+            && delta.size < release.manifest.size
+            && super::delta_package::matches(delta, &release.version, &exe)
+        {
+            let mut incremental_release = release.clone();
+            incremental_release.url = delta.url.clone();
+            incremental_release.manifest.size = delta.size;
+            let incremental_result = (|| {
+                let package = stage.join("delta.zip");
+                super::download::run(&package, &incremental_release, cancel, progress)?;
+                if !hash(&package)?.eq_ignore_ascii_case(&delta.sha256) {
+                    return Err("增量包 SHA256 校验失败".to_string());
+                }
+                super::delta_package::extract(
+                    &package,
+                    &stage.join("payload"),
+                    &exe,
+                    release,
+                    cancel,
+                )
+            })();
+            match incremental_result {
+                Ok(()) => incremental = true,
+                Err(error) => {
+                    if cancel.load(Ordering::Relaxed) {
+                        return Err("下载已取消".into());
+                    }
+                    delta_error = Some(error);
+                    let payload = stage.join("payload");
+                    if payload.exists() {
+                        fs::remove_dir_all(&payload).map_err(|_| "增量暂存清除失败")?;
+                    }
+                    progress.store(0, Ordering::Relaxed);
+                }
+            }
         }
-        if cancel.load(Ordering::Relaxed) {
-            return Err("下载已取消".into());
+        if !incremental {
+            let package = stage.join("package.zip");
+            super::download::run(&package, release, cancel, progress)?;
+            if !hash(&package)?.eq_ignore_ascii_case(&release.manifest.sha256) {
+                return Err("更新包 SHA256 校验失败".into());
+            }
+            if cancel.load(Ordering::Relaxed) {
+                return Err("下载已取消".into());
+            }
+            extract(
+                &package,
+                &stage.join("payload"),
+                &release.version,
+                &release.manifest.executable_sha256,
+            )?;
         }
-        extract(
-            &package,
-            &stage.join("payload"),
-            &release.version,
-            &release.manifest.executable_sha256,
-        )?;
         if cancel.load(Ordering::Relaxed) {
             return Err("下载已取消".into());
         }
@@ -195,6 +249,7 @@ pub(super) fn prepare(
             parent: std::process::id(),
         };
         let path = stage.join("job.json");
+        fs::write(stage.join("transfer.json"), serde_json::to_vec(&serde_json::json!({"kind":if incremental { "delta" } else { "full" }, "deltaFallbackReason":delta_error})).map_err(|_| "传输记录无法生成")?).map_err(|_| "传输记录无法写入")?;
         fs::write(
             &path,
             serde_json::to_vec(&job).map_err(|_| "更新任务无法生成")?,

@@ -9,7 +9,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-fn temporary() -> PathBuf {
+pub(super) fn temporary() -> PathBuf {
     let path = std::env::temp_dir().join(format!(
         "desktop-meter-update-test-{}",
         SystemTime::now()
@@ -122,4 +122,105 @@ fn malicious_archive_cannot_escape_or_inject_extra_files() {
         assert!(!root.join("outside").exists());
         fs::remove_dir_all(root).unwrap();
     }
+}
+
+#[test]
+fn incremental_package_rebuilds_exact_program_and_rejects_a_changed_baseline() {
+    use crate::domain::update::{Delta, Manifest, Release};
+    let root = temporary();
+    let base = root.join("base");
+    program(&base, &vec![7; 15000]);
+    let target = root.join("new");
+    program(&target, &vec![7; 15000]);
+    fs::write(target.join("manifest.json"), br#"{"version":"0.2.1"}"#).unwrap();
+    let mut new_program = vec![7; 15000];
+    new_program[4000..4020].fill(42);
+    fs::write(target.join("desktop-meter.exe"), new_program).unwrap();
+    super::delta::create(
+        &base.join("desktop-meter.exe"),
+        &target.join("desktop-meter.exe"),
+        &root.join("patch"),
+    )
+    .unwrap();
+    let package = root.join("delta.zip");
+    let mut writer = zip::ZipWriter::new(fs::File::create(&package).unwrap());
+    for name in [
+        "desktop-meter.exe.patch",
+        "README.md",
+        "启动设置.cmd",
+        "manifest.json",
+    ] {
+        writer
+            .start_file(
+                format!("DesktopMeter-0.2.1-from-0.2.0-delta-win-x64/{name}"),
+                zip::write::SimpleFileOptions::default(),
+            )
+            .unwrap();
+        writer
+            .write_all(
+                &fs::read(if name.ends_with(".patch") {
+                    root.join("patch")
+                } else {
+                    target.join(name)
+                })
+                .unwrap(),
+            )
+            .unwrap();
+    }
+    writer.finish().unwrap();
+    let release = Release {
+        version: "0.2.1".into(),
+        notes: String::new(),
+        url: String::new(),
+        page: String::new(),
+        source: http::GITHUB.into(),
+        manifest: Manifest {
+            schema: 1,
+            version: "0.2.1".into(),
+            file_name: "DesktopMeter-0.2.1-win-x64.zip".into(),
+            size: 100000,
+            sha256: "a".repeat(64),
+            executable_sha256: files::hash(&target.join("desktop-meter.exe")).unwrap(),
+            delta: Some(Delta {
+                base_version: "0.2.0".into(),
+                base_executable_sha256: files::hash(&base.join("desktop-meter.exe")).unwrap(),
+                executable_size: 15000,
+                file_name: "DesktopMeter-0.2.1-from-0.2.0-delta-win-x64.zip".into(),
+                size: fs::metadata(&package).unwrap().len(),
+                sha256: files::hash(&package).unwrap(),
+                url: "https://github.com/xiaoyanse/desktop-pet/releases/download/v0.2.1/delta.zip"
+                    .into(),
+            }),
+        },
+    };
+    super::delta_package::extract(
+        &package,
+        &root.join("payload"),
+        &base.join("desktop-meter.exe"),
+        &release,
+        &std::sync::atomic::AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        files::hash(&root.join("payload/desktop-meter.exe")).unwrap(),
+        release.manifest.executable_sha256
+    );
+    fs::write(base.join("desktop-meter.exe"), b"modified").unwrap();
+    assert!(!super::delta_package::matches(
+        release.manifest.delta.as_ref().unwrap(),
+        &release.version,
+        &base.join("desktop-meter.exe")
+    ));
+    assert!(
+        super::delta_package::extract(
+            &package,
+            &root.join("bad"),
+            &base.join("desktop-meter.exe"),
+            &release,
+            &std::sync::atomic::AtomicBool::new(false)
+        )
+        .is_err()
+    );
+    assert!(!root.join("bad").exists());
+    fs::remove_dir_all(root).unwrap();
 }

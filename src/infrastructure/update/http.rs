@@ -126,9 +126,27 @@ pub(super) fn check(source: &str) -> Result<Option<Release>, String> {
             .map_err(|_| "更新清单下载失败")?,
         16 * 1024,
     )?;
-    let manifest: Manifest =
+    let mut manifest: Manifest =
         serde_json::from_slice(&manifest_data).map_err(|_| "更新清单格式无效")?;
     manifest.validate(tag)?;
+    if let Some(delta) = manifest.delta.as_mut() {
+        let asset = assets
+            .iter()
+            .find(|asset| asset["name"].as_str() == Some(&delta.file_name));
+        let url = asset.and_then(|asset| asset["browser_download_url"].as_str());
+        if delta.validate(&manifest.version)
+            && url.is_some_and(|url| asset_url(url, source).is_ok())
+            && !asset.is_some_and(|asset| {
+                asset["size"]
+                    .as_u64()
+                    .is_some_and(|size| size != delta.size)
+            })
+        {
+            delta.url = url.unwrap().into();
+        } else {
+            manifest.delta = None;
+        }
+    }
     let package = assets
         .iter()
         .find(|asset| asset["name"].as_str() == Some(&manifest.file_name))

@@ -68,11 +68,18 @@ pub(super) fn show(ui: &mut egui::Ui, preferences: &mut Preferences, service: &m
                 let version = release.version.clone();
                 let page = release.page.clone();
                 ui.label(format!(
-                    "发现 {} · {} · {:.1} MB",
+                    "发现 {} · {} · 全量 {:.1} MB",
                     version,
                     release.source,
                     release.manifest.size as f64 / 1048576.0
                 ));
+                if let Some(delta) = &release.manifest.delta {
+                    ui.weak(format!(
+                        "匹配 {} 时优先增量 {:.1} MB；不匹配或重建失败则自动改用全量包。",
+                        delta.base_version,
+                        delta.size as f64 / 1048576.0
+                    ));
+                }
                 egui::ScrollArea::vertical()
                     .max_height(150.0)
                     .id_salt("release-notes")
@@ -91,12 +98,10 @@ pub(super) fn show(ui: &mut egui::Ui, preferences: &mut Preferences, service: &m
                 });
             }
             State::Downloading(release) => {
-                ui.label(format!("下载 {}，完成后校验 SHA256…", release.version));
+                ui.label(format!("正在下载、校验与重建 {}…", release.version));
                 ui.add(
-                    egui::ProgressBar::new(
-                        (service.progress() as f64 / release.manifest.size as f64).min(1.0) as f32,
-                    )
-                    .show_percentage(),
+                    egui::ProgressBar::new((service.progress() as f64 / 10000.0).min(1.0) as f32)
+                        .show_percentage(),
                 );
                 if actions::secondary(ui, Icon::Cancel, "取消下载").clicked() {
                     service.cancel();

@@ -10,6 +10,10 @@ $tag = "v$Version"
 $archive = Join-Path $projectRoot "dist\DesktopMeter-$Version-win-x64.zip"
 $manifestPath = Join-Path $projectRoot "dist\update-manifest-$Version.json"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+$installer = Join-Path $projectRoot "dist\DesktopMeter-$Version-setup-win-x64.exe"
+$deltaArchive = Join-Path $projectRoot "dist\$($manifest.delta.file_name)"
+if (-not (Test-Path -LiteralPath $installer) -or -not $manifest.delta -or $manifest.delta.file_name -ne "DesktopMeter-$Version-from-$($manifest.delta.base_version)-delta-win-x64.zip" -or (Get-Item -LiteralPath $deltaArchive).Length -ne $manifest.delta.size -or (Get-FileHash -LiteralPath $deltaArchive -Algorithm SHA256).Hash -ine $manifest.delta.sha256) { throw '安装包或增量包不完整。' }
+if (-not $manifest.installer -or $manifest.installer.file_name -ne [IO.Path]::GetFileName($installer) -or $manifest.installer.size -ne (Get-Item -LiteralPath $installer).Length -or $manifest.installer.sha256 -ine (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash) { throw '安装包与发布清单不一致。' }
 if ($manifest.schema -ne 1 -or $manifest.version -ne $Version -or $manifest.file_name -ne [IO.Path]::GetFileName($archive) -or $manifest.size -ne (Get-Item -LiteralPath $archive).Length -or $manifest.sha256 -ine (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash) { throw '发布包与更新清单不一致。' }
 if (& git -C $projectRoot status --porcelain) { throw '发布需要干净工作区。' }
 $notes = Get-Content -LiteralPath $NotesFile -Raw
@@ -32,10 +36,13 @@ if (Test-Path -LiteralPath $uploadDirectory) { throw '上传暂存目录已存�
 $null = New-Item -ItemType Directory -Path $uploadDirectory
 $uploadManifest = Join-Path $uploadDirectory 'update-manifest.json'
 Copy-Item -LiteralPath $manifestPath -Destination $uploadManifest
-& $gh release upload $tag $archive $uploadManifest --repo $repository
+& $gh release upload $tag $installer $archive $deltaArchive $uploadManifest --repo $repository
 if ($LASTEXITCODE -ne 0) { throw 'GitHub 附件上传失败；保留草稿供检查。' }
 $githubAssets = (& $gh release view $tag --repo $repository --json assets | ConvertFrom-Json).assets
-if ($LASTEXITCODE -ne 0 -or $githubAssets.Count -ne 2 -or -not ($githubAssets | Where-Object { $_.name -eq $manifest.file_name -and $_.size -eq $manifest.size })) { throw 'GitHub 草稿附件回读失败。' }
+if ($LASTEXITCODE -ne 0 -or $githubAssets.Count -ne 4) { throw 'GitHub 草稿附件数量回读失败。' }
+foreach ($file in @($installer, $archive, $deltaArchive, $uploadManifest)) {
+    if (-not ($githubAssets | Where-Object { $_.name -eq [IO.Path]::GetFileName($file) -and $_.size -eq (Get-Item -LiteralPath $file).Length })) { throw 'GitHub 草稿附件尺寸回读失败。' }
+}
 $giteeRelease = Invoke-GiteeApi -Method POST -Path "/repos/$repository/releases" -Parameters @{tag_name=$tag;name="桌面工作助理 $Version";body=$notes;prerelease='false';target_commitish=$sourceCommit}
 Add-Type -AssemblyName System.Net.Http
 $handler = New-Object System.Net.Http.HttpClientHandler
@@ -45,7 +52,7 @@ $client.DefaultRequestHeaders.UserAgent.ParseAdd('DesktopMeter-Release/' + $Vers
 $client.Timeout = [TimeSpan]::FromMinutes(3)
 $token = [CodexGiteeCredential]::Load('Codex:Gitee:API')
 try {
-    foreach ($attachment in @($archive, $uploadManifest)) {
+    foreach ($attachment in @($installer, $archive, $deltaArchive, $uploadManifest)) {
         $multipart = New-Object System.Net.Http.MultipartFormDataContent
         $stream = [IO.File]::OpenRead($attachment)
         try {
@@ -73,7 +80,9 @@ try {
 $giteePublished = Invoke-GiteeApi -Path "/repos/$repository/releases/$($giteeRelease.id)"
 $giteePublished | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $uploadDirectory 'gitee-release-response.json') -Encoding utf8NoBOM
 $giteeLinks = if ($giteePublished.assets -is [array]) { $giteePublished.assets } else { $giteePublished.assets.links }
-if (-not ($giteeLinks | Where-Object { $_.name -eq $manifest.file_name }) -or -not ($giteeLinks | Where-Object { $_.name -eq 'update-manifest.json' })) { throw 'Gitee 附件回读不完整；GitHub 保留草稿，检查发布响应文件。' }
+foreach ($file in @($installer, $archive, $deltaArchive, $uploadManifest)) {
+    if (-not ($giteeLinks | Where-Object { $_.name -eq [IO.Path]::GetFileName($file) })) { throw 'Gitee 附件回读不完整；GitHub 保留草稿，检查发布响应文件。' }
+}
 & $gh release edit $tag --repo $repository --draft=false
 if ($LASTEXITCODE -ne 0) { throw 'GitHub 公开发布失败，草稿保留。' }
 [pscustomobject]@{GitHub="https://github.com/$repository/releases/tag/$tag";Gitee="https://gitee.com/$repository/releases/tag/$tag";Version=$Version} | ConvertTo-Json

@@ -1,3 +1,5 @@
+mod delta;
+mod delta_package;
 mod download;
 mod files;
 mod http;
@@ -112,4 +114,46 @@ pub fn probe(source: &str, download: bool) -> Result<serde_json::Value, String> 
         None
     };
     Ok(serde_json::json!({"release":release,"downloadedJob":job}))
+}
+
+pub fn make_delta(
+    base: &std::path::Path,
+    new: &std::path::Path,
+    patch: &std::path::Path,
+) -> Result<(), String> {
+    delta::create(base, new, patch)
+}
+
+pub fn delta_probe(
+    source: &str,
+    base: &std::path::Path,
+    force_fallback: bool,
+) -> Result<serde_json::Value, String> {
+    if !matches!(source, http::GITHUB | http::GITEE) {
+        return Err("更新探针来源无效".into());
+    }
+    let mut release = http::check(source)?.ok_or("无公开更新版本")?;
+    if force_fallback && let Some(delta) = release.manifest.delta.as_mut() {
+        delta.sha256 = "0".repeat(64);
+    }
+    let job = files::prepare_for(&release, base, &AtomicBool::new(false), &AtomicU64::new(0))?;
+    Ok(serde_json::json!({"release":release,"downloadedJob":job}))
+}
+
+pub fn apply_delta(
+    base: &std::path::Path,
+    patch: &std::path::Path,
+    output: &std::path::Path,
+) -> Result<(), String> {
+    use std::io::Read;
+    let mut file = std::fs::File::open(patch).map_err(|_| "差分文件不可读")?;
+    let mut header = [0u8; 16];
+    file.read_exact(&mut header).map_err(|_| "差分头不可读")?;
+    delta::apply(
+        base,
+        patch,
+        output,
+        u64::from_le_bytes(header[8..].try_into().unwrap()),
+        &AtomicBool::new(false),
+    )
 }

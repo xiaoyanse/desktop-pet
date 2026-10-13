@@ -39,6 +39,34 @@ pub struct Manifest {
     pub size: u64,
     pub sha256: String,
     pub executable_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delta: Option<Delta>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Delta {
+    pub base_version: String,
+    pub base_executable_sha256: String,
+    pub executable_size: u64,
+    pub file_name: String,
+    pub size: u64,
+    pub sha256: String,
+    #[serde(skip)]
+    pub url: String,
+}
+impl Delta {
+    pub fn validate(&self, version: &str) -> bool {
+        newer(version, &self.base_version)
+            && self.file_name
+                == format!(
+                    "DesktopMeter-{}-from-{}-delta-win-x64.zip",
+                    version, self.base_version
+                )
+            && (1..=100 * 1024 * 1024).contains(&self.size)
+            && (1..=100 * 1024 * 1024).contains(&self.executable_size)
+            && [&self.sha256, &self.base_executable_sha256]
+                .iter()
+                .all(|hash| hash.len() == 64 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()))
+    }
 }
 impl Manifest {
     pub fn validate(&self, tag: &str) -> Result<(), String> {
@@ -86,6 +114,7 @@ mod tests {
             size: 100,
             sha256: "a".repeat(64),
             executable_sha256: "b".repeat(64),
+            delta: None,
         };
         assert!(m.validate("v0.2.0").is_ok());
         assert!(m.validate("v0.3.0").is_err());
@@ -94,5 +123,25 @@ mod tests {
         m.file_name = "DesktopMeter-0.2.0-win-x64.zip".into();
         m.size = u64::MAX;
         assert!(m.validate("v0.2.0").is_err());
+    }
+
+    #[test]
+    fn legacy_full_manifest_remains_compatible_and_delta_requires_monotonic_exact_baseline() {
+        let m: Manifest = serde_json::from_value(serde_json::json!({"schema":1,"version":"0.2.0","file_name":"DesktopMeter-0.2.0-win-x64.zip","size":100,"sha256":"a".repeat(64),"executable_sha256":"b".repeat(64)})).unwrap();
+        assert!(m.delta.is_none());
+        assert!(m.validate("v0.2.0").is_ok());
+        let mut delta = Delta {
+            base_version: "0.2.0".into(),
+            base_executable_sha256: "b".repeat(64),
+            executable_size: 100,
+            file_name: "DesktopMeter-0.2.1-from-0.2.0-delta-win-x64.zip".into(),
+            size: 80,
+            sha256: "a".repeat(64),
+            url: String::new(),
+        };
+        assert!(delta.validate("0.2.1"));
+        assert!(!delta.validate("0.2.0"));
+        delta.base_executable_sha256 = "bad".into();
+        assert!(!delta.validate("0.2.1"));
     }
 }

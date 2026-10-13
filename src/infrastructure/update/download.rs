@@ -59,7 +59,7 @@ pub(super) fn run(
                     return Err("更新包超出清单大小".into());
                 }
                 output.write_all(&chunk).map_err(|_| "更新缓存写入失败")?;
-                progress.store(written, Ordering::Relaxed);
+                progress.store(written * 10000 / release.manifest.size, Ordering::Relaxed);
             }
             output.sync_all().map_err(|_| "更新缓存同步失败")?;
             if written != release.manifest.size {

@@ -20,6 +20,51 @@ use interfaces::{ReportCollector, ResourceSampler, SettingsStore};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|arg| {
+        arg == "--make-update-delta"
+            || arg == "--update-delta-probe"
+            || arg == "--apply-update-delta"
+            || arg == "--update-delta-fallback-probe"
+    }) {
+        let result = (|| -> Result<(), String> {
+            if args.len() != 5 {
+                return Err("差分工具参数数量无效".into());
+            }
+            if args[1] == "--make-update-delta" {
+                infrastructure::update::make_delta(
+                    std::path::Path::new(&args[2]),
+                    std::path::Path::new(&args[3]),
+                    std::path::Path::new(&args[4]),
+                )
+            } else if args[1] == "--apply-update-delta" {
+                infrastructure::update::apply_delta(
+                    std::path::Path::new(&args[2]),
+                    std::path::Path::new(&args[3]),
+                    std::path::Path::new(&args[4]),
+                )
+            } else {
+                let report = infrastructure::update::delta_probe(
+                    &args[2],
+                    std::path::Path::new(&args[3]),
+                    args[1] == "--update-delta-fallback-probe",
+                )?;
+                use std::io::Write;
+                std::fs::File::options()
+                    .write(true)
+                    .create_new(true)
+                    .open(&args[4])
+                    .and_then(|mut file| {
+                        file.write_all(&serde_json::to_vec_pretty(&report).unwrap())
+                    })
+                    .map_err(|_| "增量探针输出不可写".into())
+            }
+        })();
+        if let Err(error) = result {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if args
         .get(1)
         .is_some_and(|arg| arg == "--update-check-probe" || arg == "--update-download-probe")
@@ -46,7 +91,7 @@ fn main() {
                 .map(|_| ())
         })();
         if let Err(error) = result {
-            native::message(&error);
+            eprintln!("{error}");
             std::process::exit(1);
         }
         return;
