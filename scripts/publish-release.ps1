@@ -49,13 +49,23 @@ try {
         $multipart = New-Object System.Net.Http.MultipartFormDataContent
         $stream = [IO.File]::OpenRead($attachment)
         try {
-            $multipart.Add((New-Object System.Net.Http.StringContent($token)), 'access_token')
+            $authentication = New-Object System.Net.Http.StringContent($token)
+            $authentication.Headers.ContentDisposition = New-Object System.Net.Http.Headers.ContentDispositionHeaderValue('form-data')
+            $authentication.Headers.ContentDisposition.Name = '"access_token"'
+            $multipart.Add($authentication)
             $content = New-Object System.Net.Http.StreamContent($stream)
             $content.Headers.ContentType = New-Object System.Net.Http.Headers.MediaTypeHeaderValue('application/octet-stream')
-            $multipart.Add($content, 'file', [IO.Path]::GetFileName($attachment))
+            $content.Headers.ContentDisposition = New-Object System.Net.Http.Headers.ContentDispositionHeaderValue('form-data')
+            $content.Headers.ContentDisposition.Name = '"file"'
+            $content.Headers.ContentDisposition.FileName = '"' + [IO.Path]::GetFileName($attachment) + '"'
+            $multipart.Add($content)
             $response = $client.PostAsync("https://gitee.com/api/v5/repos/$repository/releases/$($giteeRelease.id)/attach_files", $multipart).GetAwaiter().GetResult()
             try {
-                if (-not $response.IsSuccessStatusCode) { throw "Gitee 附件上传失败 HTTP $([int]$response.StatusCode)；不自动重试或删除版本。" }
+                if (-not $response.IsSuccessStatusCode) {
+                    $reason = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult().Replace($token, '[redacted]')
+                    if ($reason.Length -gt 800) { $reason = $reason.Substring(0, 800) }
+                    throw "Gitee 附件上传失败 HTTP $([int]$response.StatusCode)：$reason；不自动重试或删除版本。"
+                }
             } finally { $response.Dispose() }
         } finally { $multipart.Dispose(); $stream.Dispose() }
     }
@@ -63,7 +73,7 @@ try {
 $giteePublished = Invoke-GiteeApi -Path "/repos/$repository/releases/$($giteeRelease.id)"
 $giteePublished | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $uploadDirectory 'gitee-release-response.json') -Encoding utf8NoBOM
 $giteeLinks = if ($giteePublished.assets -is [array]) { $giteePublished.assets } else { $giteePublished.assets.links }
-if (@($giteeLinks).Count -ne 2 -or -not ($giteeLinks | Where-Object { $_.name -eq $manifest.file_name }) -or -not ($giteeLinks | Where-Object { $_.name -eq 'update-manifest.json' })) { throw 'Gitee 附件回读不完整；GitHub 保留草稿，检查发布响应文件。' }
+if (-not ($giteeLinks | Where-Object { $_.name -eq $manifest.file_name }) -or -not ($giteeLinks | Where-Object { $_.name -eq 'update-manifest.json' })) { throw 'Gitee 附件回读不完整；GitHub 保留草稿，检查发布响应文件。' }
 & $gh release edit $tag --repo $repository --draft=false
 if ($LASTEXITCODE -ne 0) { throw 'GitHub 公开发布失败，草稿保留。' }
 [pscustomobject]@{GitHub="https://github.com/$repository/releases/tag/$tag";Gitee="https://gitee.com/$repository/releases/tag/$tag";Version=$Version} | ConvertTo-Json
