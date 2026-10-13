@@ -17,6 +17,10 @@ if (-not $baseExpected -or (Get-FileHash -LiteralPath $baseExecutable -Algorithm
 $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
 if (-not (Test-Path -LiteralPath $compiler)) { throw '缺少 Inno Setup 6 安装包编译器。' }
 $sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+$icon = Get-ChildItem -Path (Join-Path $projectRoot 'target\release\build\desktop-meter-*\out\desktop-meter.ico') -File |
+    Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+if (-not $icon) { throw '缺少构建生成的品牌安装图标。' }
+$null = & (Join-Path $PSScriptRoot 'verify-windows-icons.ps1') -Executable $source -IconFile $icon.FullName
 $commit = (& git -C $projectRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or (& git -C $projectRoot status --porcelain)) { throw '发布打包需要已验证并提交的干净工作区。' }
 if ((Get-Content -LiteralPath (Join-Path $projectRoot 'Cargo.toml') -Raw) -notmatch ('(?m)^version = "' + [regex]::Escape($Version) + '"')) { throw '版本参数与 Cargo.toml 不一致。' }
@@ -57,8 +61,9 @@ $manifest.delta = [ordered]@{
 }
 $setup = Join-Path $projectRoot "dist\DesktopMeter-$Version-setup-win-x64.exe"
 if (Test-Path -LiteralPath $setup) { throw '安装包已存在，拒绝覆盖。' }
-& $compiler "/DReleaseVersion=$Version" "/DPackageDir=$package" "/DOutputPath=$(Join-Path $projectRoot 'dist')" (Join-Path $projectRoot 'packaging\windows\desktop-meter.iss')
+& $compiler "/DReleaseVersion=$Version" "/DPackageDir=$package" "/DIconPath=$($icon.FullName)" "/DOutputPath=$(Join-Path $projectRoot 'dist')" (Join-Path $projectRoot 'packaging\windows\desktop-meter.iss')
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $setup)) { throw 'Windows 安装包构建失败。' }
+$null = & (Join-Path $PSScriptRoot 'verify-windows-icons.ps1') -Executable $source -IconFile $icon.FullName -Installer $setup
 $manifest.installer = [ordered]@{
     file_name = [IO.Path]::GetFileName($setup)
     size = (Get-Item -LiteralPath $setup).Length

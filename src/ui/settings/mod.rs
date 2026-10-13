@@ -84,6 +84,9 @@ impl Settings {
         self.tab = 8;
         self.reveal();
     }
+    pub fn screenshot_visible(&self) -> bool {
+        self.open && self.tab == 8
+    }
     pub fn open_office(&mut self, kind: crate::domain::office::Kind) {
         self.tab = 9;
         self.reveal();
@@ -108,6 +111,7 @@ impl Settings {
             egui::ViewportId::from_hash_of("settings"),
             egui::ViewportBuilder::default()
                 .with_title("资源监视器 · 设置")
+                .with_icon(crate::assets::window_icon())
                 .with_taskbar(true)
                 .with_decorations(false)
                 .with_transparent(true)
@@ -134,7 +138,7 @@ impl Settings {
                     self.tab = tab;
                 }
                 egui::CentralPanel::default()
-                    .frame(egui::Frame::new().inner_margin(28))
+                    .frame(shell::content_frame())
                     .show(ctx, |ui| {
                         navigation::header(ui, self.tab, config, snapshot);
                         if !message.is_empty() {
@@ -274,7 +278,7 @@ fn preview_shell(ctx: &egui::Context, tab: usize, contents: impl FnOnce(&mut egu
     window_chrome::show(ctx);
     navigation::navigation(ctx, tab, &config);
     egui::CentralPanel::default()
-        .frame(egui::Frame::new().inner_margin(28))
+        .frame(shell::content_frame())
         .show(ctx, |ui| {
             navigation::header(ui, tab, &config, &Snapshot::default());
             contents(ui);

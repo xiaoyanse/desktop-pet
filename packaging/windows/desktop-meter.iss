@@ -7,6 +7,9 @@
 #ifndef OutputPath
   #error OutputPath is required
 #endif
+#ifndef IconPath
+  #error IconPath is required
+#endif
 
 [Setup]
 AppId={{57F879EB-06E4-44F2-8CC5-A990C358CD0E}
@@ -27,6 +30,7 @@ OutputBaseFilename=DesktopMeter-{#ReleaseVersion}-setup-win-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile={#IconPath}
 DisableProgramGroupPage=yes
 DisableDirPage=no
 UninstallFilesDir={app}\uninstall

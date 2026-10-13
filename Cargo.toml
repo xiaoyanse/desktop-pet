@@ -1,6 +1,6 @@
 [package]
 name = "desktop-meter"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "纯 Rust Windows 桌面资源监视器"
 

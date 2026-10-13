@@ -291,11 +291,7 @@ fn main() {
         .with_always_on_top()
         .with_inner_size([240.0, 280.0])
         .with_resizable(false);
-    viewport = viewport.with_icon(eframe::egui::IconData {
-        rgba: include_bytes!(concat!(env!("OUT_DIR"), "/icon-64.rgba")).to_vec(),
-        width: 64,
-        height: 64,
-    });
+    viewport = viewport.with_icon(assets::window_icon());
     if let Some(p) = config.position {
         viewport = viewport.with_position(p);
     }

@@ -31,35 +31,40 @@ pub fn navigation(ctx: &egui::Context, tab: usize, config: &Config) -> Option<us
         .frame(
             egui::Frame::new()
                 .stroke(egui::Stroke::NONE)
-                .inner_margin(18),
+                .inner_margin(egui::Margin {
+                    left: 18,
+                    right: 18,
+                    top: 8,
+                    bottom: 18,
+                }),
         )
         .show(ctx, |ui| {
             let (brand, _) = ui
-                .allocate_exact_size(egui::vec2(ui.available_width(), 72.0), egui::Sense::hover());
+                .allocate_exact_size(egui::vec2(ui.available_width(), 58.0), egui::Sense::hover());
             artwork::draw(
                 ui.painter(),
                 egui::Rect::from_center_size(
-                    brand.min + egui::vec2(25.0, 30.0),
-                    egui::vec2(54.0, 54.0),
+                    brand.min + egui::vec2(25.0, 25.0),
+                    egui::vec2(46.0, 46.0),
                 ),
                 "brand-planet",
                 Color32::WHITE,
             );
             ui.painter().text(
-                brand.min + egui::vec2(56.0, 13.0),
+                brand.min + egui::vec2(56.0, 6.0),
                 egui::Align2::LEFT_TOP,
                 "桌面仪表",
                 egui::FontId::proportional(22.0),
                 theme::TEXT,
             );
             ui.painter().text(
-                brand.min + egui::vec2(56.0, 43.0),
+                brand.min + egui::vec2(56.0, 34.0),
                 egui::Align2::LEFT_TOP,
                 "陪伴高效的每一天",
                 egui::FontId::proportional(11.0),
                 theme::MUTED,
             );
-            ui.add_space(20.0);
+            ui.add_space(12.0);
             let spacing = ui.spacing().item_spacing.y;
             ui.spacing_mut().item_spacing.y = 0.0;
             let count = ENTRIES.len() as f32;
@@ -151,9 +156,9 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
         11 => ("剪贴板历史", "手动记录新复制的内容，让文字与图片随手可用。"),
         _ => ("清理记录", "查看实际结果与前后变化。"),
     };
-    ui.label(RichText::new(title).size(34.0).strong());
+    ui.label(RichText::new(title).size(26.0).strong());
     ui.label(RichText::new(description).size(14.0).color(theme::MUTED));
-    ui.add_space(8.0);
+    ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
         if tab == 11 {
             ui.label(
@@ -230,12 +235,42 @@ pub fn header(ui: &mut egui::Ui, tab: usize, config: &Config, snapshot: &Snapsho
             .color(theme::MUTED),
         );
     });
-    ui.add_space(24.0);
+    ui.add_space(12.0);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compact_header_keeps_the_first_control_near_the_top_at_both_window_sizes() {
+        for size in [egui::vec2(840.0, 600.0), egui::vec2(1040.0, 820.0)] {
+            let ctx = egui::Context::default();
+            theme::setup(&ctx);
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                    ..Default::default()
+                },
+                |ctx| {
+                    super::super::window_chrome::show(ctx);
+                    navigation(ctx, 0, &Config::default());
+                    egui::CentralPanel::default()
+                        .frame(super::super::content_frame())
+                        .show(ctx, |ui| {
+                            let start = ui.cursor().top();
+                            header(ui, 0, &Config::default(), &Snapshot::default());
+                            assert!(start <= 48.0, "header begins at {start}");
+                            assert!(
+                                ui.cursor().top() < 160.0,
+                                "controls begin at {:?}",
+                                ui.cursor()
+                            );
+                        });
+                },
+            );
+        }
+    }
 
     #[test]
     fn minimum_window_keeps_last_navigation_item_above_footer() {

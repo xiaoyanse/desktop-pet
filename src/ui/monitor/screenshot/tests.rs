@@ -32,7 +32,7 @@ fn finish(
 }
 
 #[test]
-fn every_direct_mode_waits_for_overlay_to_close_and_opens_editor_only_after_capture() {
+fn every_direct_mode_copies_after_capture_without_opening_workbench() {
     for mode in Mode::ALL {
         let ctx = egui::Context::default();
         let mut settings = Settings::default();
@@ -72,8 +72,42 @@ fn every_direct_mode_waits_for_overlay_to_close_and_opens_editor_only_after_capt
             now + Duration::from_millis(201),
         );
         assert_eq!(backend.calls.load(Ordering::SeqCst), 1);
-        assert!(service.document.is_some() && settings.open);
-        assert!(backend.copied.lock().unwrap().is_none());
+        assert!(service.document.is_none() && !settings.open);
+        assert_eq!(
+            backend.copied.lock().unwrap().as_ref().unwrap(),
+            &vec![255; 8 * 8 * 4]
+        );
+    }
+}
+
+#[test]
+fn copy_restores_the_previous_page_and_keeps_annotation_only_when_already_open() {
+    for edit in [false, true] {
+        let ctx = egui::Context::default();
+        let mut settings = Settings::default();
+        if edit {
+            settings.open_screenshot();
+        } else {
+            settings.open_meeting();
+        }
+        let mut flow = CaptureFlow::default();
+        let (mut service, backend) = crate::application::screenshot::tests::fake_service();
+        let now = Instant::now();
+        let _ = ctx.run(Default::default(), |ctx| {
+            assert!(flow.begin(ctx, &mut settings, &service, Mode::Rectangle, now));
+        });
+        finish(
+            &ctx,
+            &mut flow,
+            &mut settings,
+            &mut service,
+            now + Duration::from_millis(201),
+        );
+        assert!(settings.open);
+        assert_eq!(settings.screenshot_visible(), edit);
+        assert_eq!(settings.meeting_visible(), !edit);
+        assert_eq!(service.document.is_some(), edit);
+        assert!(backend.copied.lock().unwrap().is_some());
     }
 }
 
@@ -109,6 +143,7 @@ fn cancellation_or_failure_returns_to_pet_or_restores_the_previously_open_page()
             }
             let mut flow = CaptureFlow::default();
             let (mut service, backend) = crate::application::screenshot::tests::fake_service();
+            *backend.copied.lock().unwrap() = Some(vec![12, 23, 34, 255]);
             if cancelled {
                 service = ScreenshotService::new(
                     Arc::new(CancelSelection),
@@ -133,7 +168,10 @@ fn cancellation_or_failure_returns_to_pet_or_restores_the_previously_open_page()
             assert_eq!(settings.open, was_open);
             assert_eq!(settings.meeting_visible(), was_open);
             assert!(service.document.is_none());
-            assert!(backend.copied.lock().unwrap().is_none());
+            assert_eq!(
+                backend.copied.lock().unwrap().as_deref(),
+                Some(&[12, 23, 34, 255][..])
+            );
         }
     }
 }

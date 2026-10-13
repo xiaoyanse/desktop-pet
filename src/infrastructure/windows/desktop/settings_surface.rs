@@ -23,6 +23,9 @@ fn attach_impl(hwnd: HWND, resize: bool) {
         if SetWindowSubclass(hwnd, Some(callback), ID, usize::from(resize)) != 0 {
             SetPropW(hwnd, ATTACHED, ID as HANDLE);
             repair_position(hwnd);
+            if resize {
+                super::settings_shape::update(hwnd);
+            }
         }
     }
 }
@@ -77,7 +80,7 @@ fn hit(point: [f32; 2], size: [f32; 2]) -> Option<i32> {
         (_, true, _, _) => Some(HTRIGHT as i32),
         (_, _, true, _) => Some(HTTOP as i32),
         (_, _, _, true) => Some(HTBOTTOM as i32),
-        _ if y < 44.0 && x < width - 138.0 => Some(HTCAPTION as i32),
+        _ if y < 36.0 && x < width - 138.0 => Some(HTCAPTION as i32),
         _ => None,
     }
 }
@@ -108,10 +111,14 @@ unsafe extern "system" fn callback(
             }
         }
         if msg == WM_NCDESTROY {
+            super::settings_shape::detach(hwnd);
             RemoveWindowSubclass(hwnd, Some(callback), ID);
             RemovePropW(hwnd, ATTACHED);
         }
         let result = DefSubclassProc(hwnd, msg, w, l);
+        if resize != 0 && matches!(msg, WM_SIZE | WM_DPICHANGED) {
+            super::settings_shape::update(hwnd);
+        }
         if matches!(
             msg,
             WM_WINDOWPOSCHANGED | WM_EXITSIZEMOVE | WM_DISPLAYCHANGE

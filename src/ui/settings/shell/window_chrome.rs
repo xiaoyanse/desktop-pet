@@ -9,11 +9,11 @@ pub fn show(ctx: &egui::Context) -> bool {
     let mut close = false;
     egui::TopBottomPanel::top("settings-titlebar")
         .show_separator_line(false)
-        .exact_height(44.0)
+        .exact_height(36.0)
         .frame(egui::Frame::new().stroke(egui::Stroke::NONE))
         .show(ctx, |ui| {
             let (rect, _) = ui
-                .allocate_exact_size(egui::vec2(ui.available_width(), 44.0), egui::Sense::hover());
+                .allocate_exact_size(egui::vec2(ui.available_width(), 36.0), egui::Sense::hover());
             let drag_rect = egui::Rect::from_min_max(
                 rect.min + egui::vec2(6.0, 6.0),
                 egui::pos2(rect.right() - 138.0, rect.bottom()),
@@ -40,7 +40,7 @@ pub fn show(ctx: &egui::Context) -> bool {
                 let button = egui::Rect::from_min_size(
                     egui::pos2(
                         rect.right() - 46.0 * (index + 1) as f32 - 6.0,
-                        rect.top() + 8.0,
+                        rect.top() + 3.0,
                     ),
                     egui::vec2(40.0, 30.0),
                 );

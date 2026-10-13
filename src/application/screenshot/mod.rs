@@ -18,6 +18,8 @@ pub enum Output {
 }
 enum Event {
     Captured(Image),
+    Copied(Option<Image>),
+    CopyFailed(Image, String),
     Pinned(Image),
     Message(String),
     Cancelled,
@@ -69,11 +71,19 @@ impl ScreenshotService {
     pub fn capturing(&self) -> bool {
         self.job.as_ref().is_some_and(|j| j.capturing)
     }
+    #[cfg(test)]
     pub fn capture(&mut self, mode: Mode) {
+        self.capture_with_output(mode, None);
+    }
+    pub fn capture_to_clipboard(&mut self, mode: Mode, keep_preview: bool) {
+        self.capture_with_output(mode, Some(keep_preview));
+    }
+    fn capture_with_output(&mut self, mode: Mode, copy: Option<bool>) {
         if self.busy() {
             return;
         }
         let capture = self.capture.clone();
+        let output = self.output.clone();
         self.message = format!("{}：Enter 确认，Esc 取消", mode.label());
         self.start(true, move |cancel| {
             let Some(selection) = capture.select(mode, cancel)? else {
@@ -85,7 +95,20 @@ impl ScreenshotService {
             capture.validate(&selection)?;
             let image = capture.capture(selection.region, cancel)?;
             capture.validate(&selection)?;
-            Ok(Event::Captured(selection.apply_mask(image)?))
+            let image = selection.apply_mask(image)?;
+            if cancel.load(Ordering::Relaxed) {
+                return Ok(Event::Cancelled);
+            }
+            if let Some(keep_preview) = copy {
+                return Ok(match output.copy(&image) {
+                    Ok(()) => Event::Copied(keep_preview.then_some(image)),
+                    Err(error) => Event::CopyFailed(
+                        image,
+                        format!("截图复制失败：{error}；可在截图页重试复制"),
+                    ),
+                });
+            }
+            Ok(Event::Captured(image))
         });
     }
     pub fn export(&mut self, kind: Output) {
@@ -147,7 +170,11 @@ impl ScreenshotService {
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| task(&worker_cancel)))
                         .unwrap_or_else(|_| Err("截图任务异常，请重试；原预览仍保留".into()))
                         .unwrap_or_else(Event::Failed);
-                let event = if capturing && worker_cancel.load(Ordering::Relaxed) {
+                // Once clipboard copy commits, a late cancellation must not claim it was undone.
+                let event = if capturing
+                    && worker_cancel.load(Ordering::Relaxed)
+                    && !matches!(event, Event::Copied(_))
+                {
                     Event::Cancelled
                 } else {
                     event
@@ -175,13 +202,26 @@ impl ScreenshotService {
             Err(TryRecvError::Empty) => return,
             Err(TryRecvError::Disconnected) => Event::Failed("截图任务中断，原预览仍保留".into()),
         };
-        if job.capturing && job.cancel.load(Ordering::Relaxed) {
+        if job.capturing && job.cancel.load(Ordering::Relaxed) && !matches!(event, Event::Copied(_))
+        {
             event = Event::Cancelled;
         }
         if let Some(job) = self.job.take() {
             let _ = job.worker.join();
         }
         match event {
+            Event::Copied(image) => {
+                if let Some(image) = image {
+                    self.document = Some(Document::new(image));
+                    self.generation += 1;
+                }
+                self.message = "截图已复制，可直接粘贴".into();
+            }
+            Event::CopyFailed(image, message) => {
+                self.document = Some(Document::new(image));
+                self.generation += 1;
+                self.message = message;
+            }
             Event::Captured(image) => {
                 self.document = Some(Document::new(image));
                 self.generation += 1;

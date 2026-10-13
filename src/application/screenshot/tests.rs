@@ -65,6 +65,47 @@ pub(crate) fn fake_service() -> (ScreenshotService, Arc<Fake>) {
         backend,
     )
 }
+
+#[test]
+fn clipboard_copy_commits_once_and_late_cancel_does_not_claim_undo() {
+    let (mut service, backend) = fake_service();
+    service.capture_to_clipboard(Mode::Fullscreen, false);
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while backend.copied.lock().unwrap().is_none() {
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    service.cancel();
+    finish(&mut service);
+    assert_eq!(service.message, "截图已复制，可直接粘贴");
+    assert!(service.document.is_none());
+    assert_eq!(backend.calls.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn clipboard_failure_keeps_the_capture_for_manual_retry_without_false_success() {
+    struct BrokenOutput;
+    impl ScreenshotOutput for BrokenOutput {
+        fn default_folder(&self) -> String {
+            String::new()
+        }
+        fn save(&self, _: &Image, _: &str) -> Result<String, String> {
+            Err("unused".into())
+        }
+        fn copy(&self, _: &Image) -> Result<(), String> {
+            Err("clipboard busy".into())
+        }
+    }
+    let mut service = ScreenshotService::new(
+        Arc::new(Fake::default()),
+        Arc::new(BrokenOutput),
+        Arc::new(|| {}),
+    );
+    service.capture_to_clipboard(Mode::Rectangle, false);
+    finish(&mut service);
+    assert!(service.message.contains("复制失败") && service.message.contains("clipboard busy"));
+    assert!(service.document.is_some());
+}
 fn finish(service: &mut ScreenshotService) {
     let deadline = Instant::now() + Duration::from_secs(3);
     while service.busy() {

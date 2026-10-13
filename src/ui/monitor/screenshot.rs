@@ -21,7 +21,7 @@ pub(super) struct CaptureFlow {
     pub hidden: bool,
     pending: Option<(Mode, Instant)>,
     restore_workbench: bool,
-    generation: u64,
+    keep_preview: bool,
 }
 impl CaptureFlow {
     pub fn begin(
@@ -36,7 +36,7 @@ impl CaptureFlow {
             return false;
         }
         self.restore_workbench = settings.open;
-        self.generation = service.generation;
+        self.keep_preview = settings.screenshot_visible();
         if service.pinned.is_some() {
             settings.screenshot_page.hide(ctx);
         }
@@ -70,15 +70,13 @@ impl CaptureFlow {
             && now >= ready
         {
             self.pending = None;
-            service.capture(mode);
+            service.capture_to_clipboard(mode, self.keep_preview);
         }
         let busy = self.pending.is_some() || service.capturing();
         if self.hidden && !busy {
             self.hidden = false;
             restore_root(ctx, passthrough);
-            if service.generation != self.generation {
-                settings.open_screenshot();
-            } else if self.restore_workbench {
+            if self.restore_workbench {
                 settings.open = true;
                 ctx.send_viewport_cmd_to(
                     egui::ViewportId::from_hash_of("settings"),

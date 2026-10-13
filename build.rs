@@ -1,10 +1,13 @@
 #[path = "scripts/visual_assets.rs"]
 mod visual_assets;
+#[path = "scripts/windows_resources.rs"]
+mod windows_resources;
 
 fn main() {
     println!("cargo:rerun-if-changed=scripts/visual_assets.rs");
     let folder = std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
     visual_assets::build(&folder);
+    windows_resources::build(&folder);
     println!("cargo:rerun-if-changed=assets/pets/atlas.png");
     let atlas = image::open("assets/pets/atlas.png")
         .expect("宠物图集必须存在")
